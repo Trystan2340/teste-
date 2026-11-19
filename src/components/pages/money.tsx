@@ -130,77 +130,128 @@ export function Transactions() {
           body="Aucune opération ne correspond. Élargissez les filtres ou ajoutez une ligne."
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="text-xs uppercase tracking-widest text-mist">
-              <tr>
-                <th className="py-2 font-medium">Date</th>
-                <th className="py-2 font-medium">Libellé</th>
-                <th className="py-2 font-medium">Catégorie</th>
-                <th className="py-2 font-medium">Compte</th>
-                <th className="py-2 text-right font-medium">Montant</th>
-                <th className="py-2">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((t) => (
-                <tr
-                  key={t.id}
-                  className="group/row border-t border-rule transition-colors hover:bg-card/50 [&>td]:py-3"
-                >
-                  <td className="py-3 whitespace-nowrap">{dayLabel(t.date)}</td>
-                  <td className="py-3">
-                    {t.label}
-                    {t.pending ? (
-                      <span className="ml-2 text-xs uppercase tracking-widest text-copper">
-                        prévu
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="py-3 text-mist">{t.category}</td>
-                  <td className="py-3 text-mist">
+        <>
+          {/* Phones get cards: a six-column table is never readable at 390 px. */}
+          <ul className="space-y-2 md:hidden">
+            {rows.map((t) => (
+              <li key={t.id} className="rounded-2xl border border-rule bg-card/70 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{t.label}</p>
+                    <p className="mt-0.5 text-xs text-mist">
+                      {dayLabel(t.date)} · {t.category}
+                    </p>
+                  </div>
+                  <Amount value={t.amount} kind={t.kind} />
+                </div>
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-card-2 px-2 py-0.5 text-[11px] text-mist">
                     {accounts.find((a) => a.id === t.accountId)?.name}
-                  </td>
-                  <td className="py-3 text-right">
-                    <Amount value={t.amount} kind={t.kind} />
-                  </td>
-                  <td className="pl-4">
-                    <div className="flex justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:focus-within:opacity-100">
-                      <button
-                        type="button"
-                        aria-label={`Modifier ${t.label}`}
-                        title="Modifier"
-                        onClick={() => open({ name: "tx", editId: t.id })}
-                        className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-card-2 hover:text-copper"
-                      >
-                        <Pencil className="size-4" strokeWidth={1.7} />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Supprimer ${t.label}`}
-                        title="Supprimer"
-                        onClick={() =>
-                          confirm(
-                            {
-                              title: `Supprimer « ${t.label} » ?`,
-                              description: "Le solde du compte sera recalculé.",
-                            },
-                            () => remove(t.id),
-                          )
-                        }
-                        className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-rose/12 hover:text-rose"
-                      >
-                        <Trash2 className="size-4" strokeWidth={1.7} />
-                      </button>
-                    </div>
-                  </td>
+                    {t.pending ? <span className="text-copper"> · prévu</span> : null}
+                  </span>
+                  <span className="flex gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Modifier ${t.label}`}
+                      onClick={() => open({ name: "tx", editId: t.id })}
+                      className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-copper"
+                    >
+                      <Pencil className="size-4" strokeWidth={1.7} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Supprimer ${t.label}`}
+                      onClick={() =>
+                        confirm(
+                          {
+                            title: `Supprimer « ${t.label} » ?`,
+                            description: "Le solde du compte sera recalculé.",
+                          },
+                          () => remove(t.id),
+                        )
+                      }
+                      className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-rose/12 hover:text-rose"
+                    >
+                      <Trash2 className="size-4" strokeWidth={1.7} />
+                    </button>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="text-xs text-mist">
+                <tr>
+                  <th className="py-2 font-medium">Date</th>
+                  <th className="py-2 font-medium">Libellé</th>
+                  <th className="py-2 font-medium">Catégorie</th>
+                  <th className="py-2 font-medium">Compte</th>
+                  <th className="py-2 text-right font-medium">Montant</th>
+                  <th className="py-2">
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((t) => (
+                  <tr
+                    key={t.id}
+                    className="group/row border-t border-rule transition-colors hover:bg-card/50 [&>td]:py-3"
+                  >
+                    <td className="whitespace-nowrap tabular-nums">{dayLabel(t.date)}</td>
+                    <td>
+                      {t.label}
+                      {t.pending ? (
+                        <span className="ml-2 rounded-full bg-copper/12 px-1.5 py-0.5 text-[11px] text-copper">
+                          prévu
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="text-mist">{t.category}</td>
+                    <td className="text-mist">
+                      {accounts.find((a) => a.id === t.accountId)?.name}
+                    </td>
+                    <td className="text-right">
+                      <Amount value={t.amount} kind={t.kind} />
+                    </td>
+                    <td className="pl-4">
+                      <div className="flex justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:focus-within:opacity-100">
+                        <button
+                          type="button"
+                          aria-label={`Modifier ${t.label}`}
+                          title="Modifier"
+                          onClick={() => open({ name: "tx", editId: t.id })}
+                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-card-2 hover:text-copper"
+                        >
+                          <Pencil className="size-4" strokeWidth={1.7} />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Supprimer ${t.label}`}
+                          title="Supprimer"
+                          onClick={() =>
+                            confirm(
+                              {
+                                title: `Supprimer « ${t.label} » ?`,
+                                description: "Le solde du compte sera recalculé.",
+                              },
+                              () => remove(t.id),
+                            )
+                          }
+                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-rose/12 hover:text-rose"
+                        >
+                          <Trash2 className="size-4" strokeWidth={1.7} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

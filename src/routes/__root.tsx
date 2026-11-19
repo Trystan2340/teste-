@@ -17,6 +17,9 @@ export const Route = createRootRoute({
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      // The two families are the whole identity: fetch the CSS early, and the
+      // font files by the time the first paint asks for them.
+      { rel: "preload", href: appCss, as: "style" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
