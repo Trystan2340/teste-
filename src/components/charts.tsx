@@ -88,7 +88,10 @@ export function FlowChart({ data }: { data: { m: string; inn: number; out: numbe
                         "w-full max-w-4 rounded-t-md bg-sage/85 transition-[height,background-color] duration-500 ease-out",
                         on && "bg-sage",
                       )}
-                      style={{ height: mounted ? `${(d.inn / max) * 100}%` : "0%", transitionDelay: "40ms" }}
+                      style={{
+                        height: mounted ? `${(d.inn / max) * 100}%` : "0%",
+                        transitionDelay: "40ms",
+                      }}
                     />
                     <span
                       className={cn(
@@ -112,7 +115,10 @@ export function FlowChart({ data }: { data: { m: string; inn: number; out: numbe
 
           <div className="mt-2 flex justify-between gap-1 text-[11px] text-mist sm:gap-3">
             {data.map((d) => (
-              <span key={d.m} className={cn("min-w-0 flex-1 truncate text-center", hover === d.m && "text-ink")}>
+              <span
+                key={d.m}
+                className={cn("min-w-0 flex-1 truncate text-center", hover === d.m && "text-ink")}
+              >
                 {d.m}
               </span>
             ))}
@@ -164,7 +170,12 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
   return (
     <figure className="flex flex-col items-center gap-4 rounded-3xl border border-rule bg-card/70 p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
       <div className="relative shrink-0">
-        <svg viewBox="0 0 140 140" className="size-36 -rotate-90" role="img" aria-label="Répartition des sorties">
+        <svg
+          viewBox="0 0 140 140"
+          className="size-36 -rotate-90"
+          role="img"
+          aria-label="Répartition des sorties"
+        >
           <circle cx="70" cy="70" r={R} fill="none" stroke="var(--card-2)" strokeWidth="16" />
           {top.map((slice, i) => {
             const share = slice.value / total;
@@ -190,7 +201,9 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
           })}
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-[11px] text-mist">{hover === null ? "Total" : top[hover].name}</span>
+          <span className="text-[11px] text-mist">
+            {hover === null ? "Total" : top[hover].name}
+          </span>
           <span className="font-serif text-xl tabular-nums">
             {hover === null ? money(total) : money(top[hover].value)}
           </span>
@@ -211,9 +224,14 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
               onFocus={() => setHover(i)}
               onBlur={() => setHover(null)}
             >
-              <span className="size-2 shrink-0 rounded-full" style={{ background: SLICE[i % SLICE.length] }} />
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ background: SLICE[i % SLICE.length] }}
+              />
               <span className="min-w-0 flex-1 truncate">{slice.name}</span>
-              <span className="tabular-nums text-mist">{Math.round((slice.value / total) * 100)} %</span>
+              <span className="tabular-nums text-mist">
+                {Math.round((slice.value / total) * 100)} %
+              </span>
               <span className="w-20 text-right tabular-nums">{money(slice.value)}</span>
             </button>
           </li>
@@ -244,8 +262,20 @@ export function Sparkline({ values }: { values: number[] }) {
     .map((v, i) => `${(i / Math.max(values.length - 1, 1)) * 100},${28 - ((v - min) / span) * 24}`)
     .join(" ");
   return (
-    <svg ref={ref} viewBox="0 0 100 30" preserveAspectRatio="none" className="h-8 w-full" aria-hidden>
-      <polyline points={points} fill="none" stroke="var(--copper)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+    <svg
+      ref={ref}
+      viewBox="0 0 100 30"
+      preserveAspectRatio="none"
+      className="h-8 w-full"
+      aria-hidden
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke="var(--copper)"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
     </svg>
   );
 }

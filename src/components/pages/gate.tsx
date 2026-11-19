@@ -10,7 +10,9 @@ function Frame({ children }: { children: ReactNode }) {
           FREEV
         </Link>
         <div>
-          <p className="font-serif text-4xl leading-tight md:text-5xl">Le mois, tenu comme un livre.</p>
+          <p className="font-serif text-4xl leading-tight md:text-5xl">
+            Le mois, tenu comme un livre.
+          </p>
           <ol className="mt-8 space-y-3 text-sm text-mist">
             <li>01 — Personnel, pro, ou les deux</li>
             <li>02 — Journal, échéances, factures</li>
@@ -19,7 +21,9 @@ function Frame({ children }: { children: ReactNode }) {
         </div>
         <p className="text-xs uppercase tracking-widest text-mist">Paris · novembre 2026</p>
       </aside>
-      <main className="flex items-center bg-canvas px-6 py-10 lg:col-span-7 lg:px-16">{children}</main>
+      <main className="flex items-center bg-canvas px-6 py-10 lg:col-span-7 lg:px-16">
+        {children}
+      </main>
     </div>
   );
 }
@@ -46,11 +50,20 @@ export function Login() {
         <p className="mt-2 text-sm text-mist">Reprendre le livre là où vous l’avez laissé.</p>
         <label className="mt-8 block">
           <span className="text-xs uppercase tracking-widest text-mist">E-mail</span>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+          />
         </label>
         <label className="mt-4 block">
           <span className="text-xs uppercase tracking-widest text-mist">Mot de passe</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+          />
         </label>
         {error ? <p className="mt-3 text-sm text-clay">{error}</p> : null}
         <Button type="submit" variant="primary" className="mt-6">
@@ -87,18 +100,33 @@ export function Signup() {
         }}
       >
         <h1 className="font-serif text-4xl">Inscription</h1>
-        <p className="mt-2 text-sm text-mist">Un compte, deux vies d’argent si vous le souhaitez.</p>
+        <p className="mt-2 text-sm text-mist">
+          Un compte, deux vies d’argent si vous le souhaitez.
+        </p>
         <label className="mt-8 block">
           <span className="text-xs uppercase tracking-widest text-mist">Nom</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+          />
         </label>
         <label className="mt-4 block">
           <span className="text-xs uppercase tracking-widest text-mist">E-mail</span>
-          <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+          />
         </label>
         <label className="mt-4 block">
           <span className="text-xs uppercase tracking-widest text-mist">Mot de passe</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+          />
         </label>
         {error ? <p className="mt-3 text-sm text-clay">{error}</p> : null}
         <Button type="submit" variant="primary" className="mt-6">
@@ -123,13 +151,31 @@ export function Configure() {
     <Frame>
       <div className="w-full max-w-lg">
         <h1 className="font-serif text-4xl">Configuration</h1>
-        <p className="mt-2 text-sm text-mist">Particulier ou professionnel. Vous pourrez tenir les deux ensuite.</p>
+        <p className="mt-2 text-sm text-mist">
+          Particulier ou professionnel. Vous pourrez tenir les deux ensuite.
+        </p>
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <button type="button" onClick={() => setKind("perso")} className={kind === "perso" ? "border border-copper p-4 text-left" : "border border-rule p-4 text-left"}>
+          <button
+            type="button"
+            onClick={() => setKind("perso")}
+            className={
+              kind === "perso"
+                ? "border border-copper p-4 text-left"
+                : "border border-rule p-4 text-left"
+            }
+          >
             <span className="block font-serif text-2xl">Particulier</span>
             <span className="mt-1 block text-sm text-mist">Budget, échéances, épargne.</span>
           </button>
-          <button type="button" onClick={() => setKind("pro")} className={kind === "pro" ? "border border-copper p-4 text-left" : "border border-rule p-4 text-left"}>
+          <button
+            type="button"
+            onClick={() => setKind("pro")}
+            className={
+              kind === "pro"
+                ? "border border-copper p-4 text-left"
+                : "border border-rule p-4 text-left"
+            }
+          >
             <span className="block font-serif text-2xl">Professionnel</span>
             <span className="mt-1 block text-sm text-mist">Factures, clients, trésorerie.</span>
           </button>
@@ -145,11 +191,17 @@ export function Configure() {
           >
             <label className="block text-sm">
               Revenu mensuel estimé
-              <input className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" defaultValue="3200" />
+              <input
+                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                defaultValue="3200"
+              />
             </label>
             <label className="block text-sm">
               Loyer
-              <input className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" defaultValue="890" />
+              <input
+                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                defaultValue="890"
+              />
             </label>
             <Button type="submit" variant="primary">
               Ouvrir le livre
@@ -167,11 +219,17 @@ export function Configure() {
           >
             <label className="block text-sm">
               Nom commercial
-              <input className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" defaultValue="Camille Morel Studio" />
+              <input
+                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                defaultValue="Camille Morel Studio"
+              />
             </label>
             <label className="block text-sm">
               SIRET
-              <input className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none" defaultValue="849 302 118 00024" />
+              <input
+                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                defaultValue="849 302 118 00024"
+              />
             </label>
             <Button type="submit" variant="primary">
               Ouvrir le livre

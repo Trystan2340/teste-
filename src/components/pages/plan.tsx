@@ -1,12 +1,12 @@
-import { eachDayOfInterval, endOfMonth, format, getDay, startOfMonth } from "date-fns";
+import { eachDayOfInterval, endOfMonth, format, getDay, parseISO, startOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Amount, Button, PageHead } from "@/components/ui";
+import { Amount, Button, InlineInput, PageHead } from "@/components/ui";
 import { useConfirmAction } from "@/components/confirm";
 import { SCHEDULE } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
-import { money } from "@/lib/utils";
+import { cn, money } from "@/lib/utils";
 
 export function Planner() {
   const [cursor, setCursor] = useState(new Date(2026, 10, 1));
@@ -197,16 +197,18 @@ export function Smart() {
           }}
         >
           <p className="text-xs uppercase tracking-widest text-mist">Nouveau plan</p>
-          <input
+          <InlineInput
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nom"
-            className="w-full border-b border-rule bg-transparent py-2 text-sm outline-none"
+            placeholder="Nom du plan"
+            aria-label="Nom du plan"
           />
-          <input
+          <InlineInput
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full border-b border-rule bg-transparent py-2 text-sm outline-none"
+            placeholder="Montant mensuel"
+            inputMode="decimal"
+            aria-label="Montant mensuel"
           />
           <Button type="submit" variant="primary">
             Créer le plan
@@ -236,31 +238,56 @@ export function Savings() {
           </Button>
         }
       />
-      <ul className="space-y-6">
+      <ul className="grid gap-3 md:grid-cols-2">
         {goals.map((g) => {
           const ratio = g.target ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
+          const done = ratio >= 100;
+          const left = Math.max(g.target - g.current, 0);
           return (
-            <li key={g.id} className="border-b border-rule pb-5">
-              <div className="flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="font-serif text-2xl">{g.name}</p>
-                  <p className="text-xs uppercase tracking-widest text-mist">
-                    {names[g.accountId] ?? "Compte"} · échéance {g.due}
+            <li key={g.id} className="chrome-pill flex flex-col rounded-3xl bg-card p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-serif text-2xl tracking-tight">{g.name}</p>
+                  <p className="mt-0.5 text-xs text-mist">
+                    {names[g.accountId] ?? "Compte"} ·{" "}
+                    {format(parseISO(g.due), "MMM yyyy", { locale: fr })}
                   </p>
                 </div>
-                <p className="tabular-nums">
-                  {money(g.current)} <span className="text-mist">/ {money(g.target)}</span>
-                </p>
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 items-center rounded-full px-2 py-1 text-xs font-medium",
+                    done ? "bg-sage/15 text-sage" : "bg-copper/10 text-copper",
+                  )}
+                >
+                  {ratio} %
+                </span>
               </div>
-              <div className="mt-3 h-1 bg-card-2">
-                <div className="h-1 bg-copper" style={{ width: `${ratio}%` }} />
+
+              <p className="mt-4 text-sm tabular-nums">
+                <span className="font-serif text-3xl tracking-tight">{money(g.current)}</span>
+                <span className="text-mist"> / {money(g.target)}</span>
+              </p>
+
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-card-2">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-[width] duration-500",
+                    done ? "bg-sage" : "bg-copper",
+                  )}
+                  style={{ width: `${ratio}%` }}
+                />
               </div>
-              <div className="mt-3 flex gap-2">
+              <p className="mt-2 text-xs text-mist">
+                {done ? "Objectif atteint." : `Il reste ${money(left)} à mettre de côté.`}
+              </p>
+
+              <div className="mt-4 flex gap-2">
                 <Button size="sm" onClick={() => open({ name: "goal", id: g.id })}>
                   Ajuster
                 </Button>
                 <Button
                   size="sm"
+                  variant="quiet"
                   onClick={() =>
                     confirm(
                       { title: `Retirer l’objectif « ${g.name} » ?`, confirmLabel: "Retirer" },
@@ -297,29 +324,59 @@ export function Debts() {
           </Button>
         }
       />
-      <p className="text-sm text-mist">
-        Reste {money(total)} · mensualités {money(monthly)}
-      </p>
-      <ul className="divide-y divide-rule border-y border-rule">
-        {debts.map((d) => (
-          <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div>
-              <p className="text-sm">{d.name}</p>
-              <p className="text-xs uppercase tracking-widest text-mist">
-                {d.rate.toLocaleString("fr-FR")} % · fin {d.end} · {money(d.monthly)} / mois
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-serif text-2xl tabular-nums">{money(d.remaining)}</span>
-              <Button size="sm" onClick={() => pay(d.id)}>
-                Rembourser
-              </Button>
-              <Button size="sm" onClick={() => open({ name: "debt", id: d.id })}>
-                Modifier
-              </Button>
-            </div>
-          </li>
-        ))}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-rule bg-card/70 p-4">
+          <p className="text-xs font-medium tracking-wide text-mist">Capital restant</p>
+          <p className="mt-1 font-serif text-3xl tabular-nums tracking-tight">{money(total)}</p>
+        </div>
+        <div className="rounded-2xl border border-rule bg-card/70 p-4">
+          <p className="text-xs font-medium tracking-wide text-mist">Mensualités</p>
+          <p className="mt-1 font-serif text-3xl tabular-nums tracking-tight">{money(monthly)}</p>
+          <p className="mt-1 text-xs text-mist">par mois, toutes dettes confondues</p>
+        </div>
+      </div>
+      <ul className="space-y-3">
+        {debts.map((d) => {
+          const months = d.monthly > 0 ? Math.ceil(d.remaining / d.monthly) : null;
+          return (
+            <li key={d.id} className="chrome-pill rounded-3xl bg-card p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{d.name}</p>
+                  <p className="mt-0.5 text-xs text-mist">
+                    {d.rate.toLocaleString("fr-FR")} % · échéance{" "}
+                    {format(parseISO(d.end), "MMM yyyy", { locale: fr })}
+                    {months ? ` · ${months} mensualités restantes` : null}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-serif text-3xl tabular-nums tracking-tight">
+                    {money(d.remaining)}
+                  </p>
+                  <p className="text-xs text-mist">{money(d.monthly)} / mois</p>
+                </div>
+              </div>
+              {d.remaining > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => pay(d.id)}>
+                    Rembourser {money(d.monthly)}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="quiet"
+                    onClick={() => open({ name: "debt", id: d.id })}
+                  >
+                    Modifier
+                  </Button>
+                </div>
+              ) : (
+                <p className="mt-4 inline-flex rounded-full bg-sage/15 px-2.5 py-1 text-xs font-medium text-sage">
+                  Dette soldée
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

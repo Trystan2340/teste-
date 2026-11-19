@@ -32,7 +32,10 @@ function Site({
             </Link>
           ))}
         </nav>
-        <Link to="/" className="ml-auto border border-copper px-3 py-2 text-xs uppercase tracking-widest text-copper">
+        <Link
+          to="/"
+          className="ml-auto border border-copper px-3 py-2 text-xs uppercase tracking-widest text-copper"
+        >
           Ouvrir l’app
         </Link>
       </header>
@@ -103,8 +106,14 @@ function Price({ name, price, note }: { name: string; price: string; note: strin
 
 function Faq() {
   const items = [
-    ["Faut-il relier une banque ?", "Non. Vous pouvez tenir le livre à la main, scanner un reçu, ou ajouter un compte avec son solde."],
-    ["Personnel et pro ensemble ?", "Oui. Le sélecteur en haut filtre le journal. Les factures restent dans Business."],
+    [
+      "Faut-il relier une banque ?",
+      "Non. Vous pouvez tenir le livre à la main, scanner un reçu, ou ajouter un compte avec son solde.",
+    ],
+    [
+      "Personnel et pro ensemble ?",
+      "Oui. Le sélecteur en haut filtre le journal. Les factures restent dans Business.",
+    ],
     ["Où sont les données ?", "Dans cette démo, sur cet appareil. Rien n’est envoyé à une banque."],
     ["Puis-je exporter ?", "Oui, depuis Paramètres ou depuis le rapport du mois."],
   ];
@@ -115,7 +124,11 @@ function Faq() {
       <ul className="mt-6 max-w-3xl divide-y divide-rule border-y border-rule">
         {items.map(([q, a], i) => (
           <li key={q}>
-            <button type="button" className="flex w-full items-center justify-between py-4 text-left" onClick={() => setOpen(i)}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between py-4 text-left"
+              onClick={() => setOpen(i)}
+            >
               <span>{q}</span>
               <span className="text-copper">{open === i ? "–" : "+"}</span>
             </button>
@@ -209,9 +222,18 @@ export function Legal({ title, children }: { title: string; children: ReactNode 
 export function Privacy() {
   return (
     <Legal title="Confidentialité">
-      <p>FREEV tient un livre de comptes. Dans cette maquette, les opérations, objectifs et réglages restent dans le navigateur, sur cet appareil.</p>
-      <p>Aucun relevé bancaire n’est demandé. Les reçus que vous déposez ne quittent pas la page : seule une lecture locale propose un montant.</p>
-      <p>L’export JSON vous appartient. Effacer les données vide le journal local sans conserver de copie.</p>
+      <p>
+        FREEV tient un livre de comptes. Dans cette maquette, les opérations, objectifs et réglages
+        restent dans le navigateur, sur cet appareil.
+      </p>
+      <p>
+        Aucun relevé bancaire n’est demandé. Les reçus que vous déposez ne quittent pas la page :
+        seule une lecture locale propose un montant.
+      </p>
+      <p>
+        L’export JSON vous appartient. Effacer les données vide le journal local sans conserver de
+        copie.
+      </p>
       <p>Contact : bonjour@freev.app.</p>
     </Legal>
   );
@@ -220,9 +242,18 @@ export function Privacy() {
 export function Terms() {
   return (
     <Legal title="Conditions">
-      <p>FREEV est un outil de suivi. Il ne fournit pas de conseil en investissement, ni un service de paiement.</p>
-      <p>L’essai dure 14 jours. Le tarif Personnel est de 6 € par mois, le tarif Professionnel de 14 € par mois. Vous pouvez arrêter avant le renouvellement.</p>
-      <p>Les chiffres affichés dépendent de ce que vous saisissez. Un solde projeté n’est pas une garantie bancaire.</p>
+      <p>
+        FREEV est un outil de suivi. Il ne fournit pas de conseil en investissement, ni un service
+        de paiement.
+      </p>
+      <p>
+        L’essai dure 14 jours. Le tarif Personnel est de 6 € par mois, le tarif Professionnel de 14
+        € par mois. Vous pouvez arrêter avant le renouvellement.
+      </p>
+      <p>
+        Les chiffres affichés dépendent de ce que vous saisissez. Un solde projeté n’est pas une
+        garantie bancaire.
+      </p>
       <p>Le droit applicable est le droit français.</p>
     </Legal>
   );

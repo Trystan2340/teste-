@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { FileText, Flame, Monitor, Moon, Repeat, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Button, PageHead, Toggle } from "@/components/ui";
+import { Button, InlineInput, PageHead, Toggle } from "@/components/ui";
 import { HELP, SESSIONS } from "@/lib/freev/data";
 import { flows, spentByCategory } from "@/lib/freev/calc";
 import { useFreev, type ThemeChoice } from "@/lib/freev/store";
@@ -422,23 +422,23 @@ export function Rules() {
           toast("Règle ajoutée");
         }}
       >
-        <input
+        <InlineInput
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nom"
-          className="border-b border-rule bg-transparent py-2 text-sm outline-none"
+          aria-label="Nom de la règle"
         />
-        <input
+        <InlineInput
           value={when}
           onChange={(e) => setWhen(e.target.value)}
           placeholder="Condition"
-          className="border-b border-rule bg-transparent py-2 text-sm outline-none"
+          aria-label="Condition"
         />
-        <input
+        <InlineInput
           value={action}
           onChange={(e) => setAction(e.target.value)}
           placeholder="Action"
-          className="border-b border-rule bg-transparent py-2 text-sm outline-none"
+          aria-label="Action"
         />
         <Button type="submit" variant="primary">
           Nouvelle règle

@@ -1,5 +1,11 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type {
+  ButtonHTMLAttributes,
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from "react";
 import type { TxKind } from "@/lib/freev/data";
 import { cn, money, signed } from "@/lib/utils";
 
@@ -28,6 +34,19 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonStyles>) {
   return <button className={cn(buttonStyles({ variant, size }), className)} {...props} />;
+}
+
+/** Compact text input for inline forms outside a dialog. */
+export function InlineInput({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <input
+      className={cn(
+        "h-10 w-full rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors placeholder:text-mist focus:border-copper/40",
+        className,
+      )}
+      {...props}
+    />
+  );
 }
 
 export function Field({
@@ -100,7 +119,10 @@ export function Toggle({
       aria-checked={on}
       aria-label={label}
       onClick={() => onChange(!on)}
-      className={cn("relative h-6 w-11 rounded-full border transition-colors", on ? "border-copper bg-copper" : "border-rule bg-card-2")}
+      className={cn(
+        "relative h-6 w-11 rounded-full border transition-colors",
+        on ? "border-copper bg-copper" : "border-rule bg-card-2",
+      )}
     >
       <span
         className={cn(
@@ -151,7 +173,14 @@ export function Stat({
       <p className="text-xs uppercase tracking-widest text-mist">{label}</p>
       <p className="mt-2 font-serif text-3xl tabular-nums text-ink">{value}</p>
       {note ? (
-        <p className={cn("mt-1 text-sm", tone === "sage" && "text-sage", tone === "clay" && "text-clay", (!tone || tone === "mist") && "text-mist")}>
+        <p
+          className={cn(
+            "mt-1 text-sm",
+            tone === "sage" && "text-sage",
+            tone === "clay" && "text-clay",
+            (!tone || tone === "mist") && "text-mist",
+          )}
+        >
           {note}
         </p>
       ) : null}
@@ -164,7 +193,9 @@ export function Amount({ value, kind }: { value: number; kind?: TxKind }) {
     return <span className="tabular-nums text-mist">{money(value)}</span>;
   }
   return (
-    <span className={cn("tabular-nums", value > 0 && "text-sage", value < 0 && "text-clay")}>{signed(value)}</span>
+    <span className={cn("tabular-nums", value > 0 && "text-sage", value < 0 && "text-clay")}>
+      {signed(value)}
+    </span>
   );
 }
 
