@@ -397,66 +397,103 @@ export function Business() {
           </Button>
         }
       />
-      <section className="grid border-y border-rule sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="CA du mois" value={money(8640)} note="Facturé" />
-        <Stat label="Charges" value={money(3120)} note="Estimées" tone="clay" />
-        <Stat label="Résultat" value={money(5520)} note="Avant impôt" tone="sage" />
-        <Stat
-          label="Trésorerie"
-          value={money(12480)}
-          note={pro ? `dont Qonto ${money(pro.balance)}` : ""}
-        />
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "CA du mois", value: money(8640), note: "Facturé", tone: "" },
+          { label: "Charges", value: money(3120), note: "Estimées", tone: "text-clay" },
+          { label: "Résultat", value: money(5520), note: "Avant impôt", tone: "text-sage" },
+          {
+            label: "Trésorerie",
+            value: money(12480),
+            note: pro ? `dont Qonto ${money(pro.balance)}` : "",
+            tone: "",
+          },
+        ].map((k) => (
+          <div key={k.label} className="rounded-2xl border border-rule bg-card/70 p-4">
+            <p className="text-xs font-medium tracking-wide text-mist">{k.label}</p>
+            <p className={cn("mt-1 font-serif text-3xl tabular-nums tracking-tight", k.tone)}>
+              {k.value}
+            </p>
+            {k.note ? <p className="mt-1 text-xs text-mist">{k.note}</p> : null}
+          </div>
+        ))}
       </section>
-      <section className="grid gap-10 lg:grid-cols-2">
-        <div>
-          <h2 className="font-serif text-2xl">Clients</h2>
-          <ul className="mt-4 divide-y divide-rule border-y border-rule">
-            {[
-              ["Atelier Nord", "AN", "Payée · 2 400 €"],
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <div className="chrome-pill rounded-3xl bg-card p-5">
+          <h2 className="font-serif text-2xl tracking-tight">Clients</h2>
+          <ul className="mt-3 space-y-1">
+            {(
               [
-                "Studio Lina",
-                "SL",
-                waiting.some((i) => i.client === "Studio Lina")
-                  ? "En attente · 1 800 €"
-                  : "Payée · 1 800 €",
-              ],
-              ["Maison Brume", "MB", "Payée · 960 €"],
-            ].map(([name, mark, last]) => (
-              <li key={name} className="flex items-center gap-3 py-3">
-                <span className="inline-flex size-10 items-center justify-center border border-rule font-serif text-sm">
+                ["Atelier Nord", "AN", "Payée · 2 400 €", true],
+                [
+                  "Studio Lina",
+                  "SL",
+                  waiting.some((i) => i.client === "Studio Lina")
+                    ? "En attente · 1 800 €"
+                    : "Payée · 1 800 €",
+                  !waiting.some((i) => i.client === "Studio Lina"),
+                ],
+                ["Maison Brume", "MB", "Payée · 960 €", true],
+              ] as [string, string, string, boolean][]
+            ).map(([name, mark, last, ok]) => (
+              <li
+                key={name}
+                className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-card-2/50"
+              >
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal/12 text-xs font-semibold text-teal">
                   {mark}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm">{name}</span>
+                  <span className="block truncate text-sm">{name}</span>
                   <span className="text-xs text-mist">{last}</span>
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-1 text-[11px] font-medium",
+                    ok ? "bg-sage/15 text-sage" : "bg-copper/12 text-copper",
+                  )}
+                >
+                  {ok ? "à jour" : "relance"}
                 </span>
               </li>
             ))}
           </ul>
         </div>
-        <div>
-          <h2 className="font-serif text-2xl">Factures</h2>
-          <ul className="mt-4 divide-y divide-rule border-y border-rule">
-            {invoices.map((inv) => (
-              <li key={inv.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="text-sm">
-                    {inv.number} · {inv.client}
-                  </p>
-                  <p className="text-xs uppercase tracking-widest text-mist">
-                    {dayLabel(inv.date)} · {inv.status}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="tabular-nums">{money(inv.amount)}</span>
-                  {inv.status !== "payée" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          toast(useFreev.getState().remind(inv.id));
-                        }}
+
+        <div className="chrome-pill rounded-3xl bg-card p-5">
+          <h2 className="font-serif text-2xl tracking-tight">Factures</h2>
+          <ul className="mt-3 divide-y divide-rule">
+            {invoices.map((inv) => {
+              const paid = inv.status === "payée";
+              return (
+                <li key={inv.id} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm">
+                        <span className="text-mist">{inv.number}</span> · {inv.client}
+                      </p>
+                      <p className="mt-0.5 text-xs text-mist">{dayLabel(inv.date)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm tabular-nums">{money(inv.amount)}</p>
+                      <span
+                        className={cn(
+                          "mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          paid
+                            ? "bg-sage/15 text-sage"
+                            : inv.status === "en retard"
+                              ? "bg-clay/15 text-clay"
+                              : "bg-copper/12 text-copper",
+                        )}
                       >
+                        {inv.status}
+                      </span>
+                    </div>
+                  </div>
+                  {!paid ? (
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" onClick={() => toast(useFreev.getState().remind(inv.id))}>
                         Relancer
                       </Button>
                       <Button
@@ -467,13 +504,13 @@ export function Business() {
                           toast("Facture marquée payée");
                         }}
                       >
-                        Payée
+                        Marquer payée
                       </Button>
-                    </>
+                    </div>
                   ) : null}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>

@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { format, parseISO } from "date-fns";
+import { fr } from "date-fns/locale";
 import { FileText, Flame, Monitor, Moon, Repeat, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -466,37 +468,64 @@ export function Subscriptions() {
           </Button>
         }
       />
-      <ul className="divide-y divide-rule border-y border-rule">
-        {subs.map((s) => (
-          <li key={s.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
-            <div>
-              <p className="text-sm">{s.name}</p>
-              <p className="text-xs uppercase tracking-widest text-mist">
-                {s.status} · {s.renews}
-                {s.trialEnd ? ` · fin d’essai ${s.trialEnd}` : ""}
+      <div className="grid gap-3 md:grid-cols-2">
+        {subs.map((s) => {
+          const tone =
+            s.status === "actif"
+              ? { dot: "bg-sage", chip: "bg-sage/15 text-sage", label: "actif" }
+              : s.status === "essai"
+                ? { dot: "bg-copper", chip: "bg-copper/12 text-copper", label: "essai" }
+                : s.status === "pause"
+                  ? { dot: "bg-mist", chip: "bg-card-2 text-mist", label: "en pause" }
+                  : { dot: "bg-clay", chip: "bg-clay/15 text-clay", label: "résilié" };
+          return (
+            <div key={s.id} className="chrome-pill flex flex-col rounded-3xl bg-card p-5">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate font-serif text-2xl tracking-tight">{s.name}</p>
+                  <p className="mt-0.5 text-xs text-mist">
+                    Renouvellement le {s.renews.replace(" du mois", "")}
+                    {s.trialEnd
+                      ? ` · essai jusqu’au ${format(parseISO(s.trialEnd), "d MMM", { locale: fr })}`
+                      : ""}
+                  </p>
+                </div>
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium ${tone.chip}`}
+                >
+                  <span className={`size-1.5 rounded-full ${tone.dot}`} />
+                  {tone.label}
+                </span>
+              </div>
+
+              <p className="mt-4 font-serif text-3xl tabular-nums tracking-tight">
+                {money(s.price)}
+                <span className="text-sm text-mist"> / mois</span>
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="tabular-nums">{money(s.price)}</span>
-              {s.status !== "résilié" ? (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => setStatus(s.id, s.status === "pause" ? "actif" : "pause")}
-                  >
-                    {s.status === "pause" ? "Reprendre" : "Pause"}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                {s.status !== "résilié" ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => setStatus(s.id, s.status === "pause" ? "actif" : "pause")}
+                    >
+                      {s.status === "pause" ? "Reprendre" : "Mettre en pause"}
+                    </Button>
+                    <Button size="sm" variant="quiet" onClick={() => setStatus(s.id, "résilié")}>
+                      Résilier
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" variant="quiet" onClick={() => setStatus(s.id, "actif")}>
+                    Réactiver
                   </Button>
-                  <Button size="sm" onClick={() => setStatus(s.id, "résilié")}>
-                    Résilier
-                  </Button>
-                </>
-              ) : (
-                <span className="text-xs uppercase tracking-widest text-mist">résilié</span>
-              )}
+                )}
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
+          );
+        })}
+      </div>
     </div>
   );
 }
