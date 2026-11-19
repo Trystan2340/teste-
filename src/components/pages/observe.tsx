@@ -525,13 +525,20 @@ export function Report() {
   const mode = useFreev((s) => s.mode);
   const month = useFreev((s) => s.month);
   const txs = useFreev((s) => s.txs);
+  const profile = useFreev((s) => s.profile);
   const flow = flows(txs, mode, month);
   const split = spentByCategory(txs, mode, month);
+  const monthName = format(parseISO(`${month}-01`), "MMMM yyyy", { locale: fr });
+  const top = split.slice(0, 6);
+  const biggest = top[0];
+  const share = biggest && flow.out > 0 ? Math.round((biggest.value / flow.out) * 100) : 0;
+  const rate = flow.inn > 0 ? Math.round((flow.rest / flow.inn) * 100) : 0;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHead
         kicker="Rapport mensuel"
-        title="Novembre, en une page"
+        title="Le mois, en une page"
         lede="Le même récit que le tableau de bord, mis en forme pour être relu ou transmis."
         actions={
           <Button
@@ -540,7 +547,14 @@ export function Report() {
               const blob = new Blob(
                 [
                   JSON.stringify(
-                    { mois: "2026-11", entrees: flow.inn, sorties: flow.out, categories: split },
+                    {
+                      mois: month,
+                      entrees: flow.inn,
+                      sorties: flow.out,
+                      net: flow.rest,
+                      tauxEpargne: rate,
+                      categories: split,
+                    },
                     null,
                     2,
                   ),
@@ -550,7 +564,7 @@ export function Report() {
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
-              a.download = "freev-novembre-2026.json";
+              a.download = `freev-${month}.json`;
               a.click();
               URL.revokeObjectURL(url);
               toast("Rapport exporté");
@@ -560,36 +574,110 @@ export function Report() {
           </Button>
         }
       />
-      <article className="border border-rule p-6 md:p-10">
-        <p className="text-xs uppercase tracking-widest text-copper">FREEV · Camille Morel</p>
-        <h2 className="mt-3 font-serif text-4xl">Livre de novembre</h2>
-        <p className="mt-4 max-w-2xl text-sm text-mist">
-          Les entrées du mois s’établissent à {money(flow.inn)}, les sorties à {money(flow.out)}. Le
-          reste à vivre est de {money(flow.rest)}. La santé du mois reste à {SNAP[mode].health}.
-        </p>
-        <dl className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div>
-            <dt className="text-xs uppercase tracking-widest text-mist">Entrées</dt>
-            <dd className="font-serif text-3xl">{money(flow.inn)}</dd>
+
+      <article className="chrome-pill overflow-hidden rounded-3xl bg-card">
+        {/* Masthead: the page should read like a statement, not a screen. */}
+        <header className="border-b border-rule px-6 py-8 md:px-10 md:py-10">
+          <div className="flex flex-wrap items-start justify-between gap-6">
+            <div>
+              <p className="text-xs font-medium tracking-wide text-copper">
+                FREEV · {profile.name}
+              </p>
+              <h2 className="mt-2 font-serif text-4xl leading-none tracking-tight md:text-5xl">
+                Livre de <span className="capitalize">{monthName}</span>
+              </h2>
+            </div>
+            <p className="max-w-[13rem] text-right text-xs leading-relaxed text-mist">
+              Établi sur {flow.rows.length} opération{flow.rows.length > 1 ? "s" : ""} · périmètre{" "}
+              {mode === "both" ? "global" : mode === "pro" ? "professionnel" : "personnel"}
+            </p>
           </div>
-          <div>
-            <dt className="text-xs uppercase tracking-widest text-mist">Sorties</dt>
-            <dd className="font-serif text-3xl">{money(flow.out)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs uppercase tracking-widest text-mist">Net</dt>
-            <dd className="font-serif text-3xl">{money(flow.rest)}</dd>
-          </div>
-        </dl>
-        <h3 className="mt-10 font-serif text-2xl">Sorties par poste</h3>
-        <ul className="mt-3 divide-y divide-rule">
-          {split.map((c) => (
-            <li key={c.name} className="flex justify-between py-2 text-sm">
-              <span>{c.name}</span>
-              <span className="tabular-nums">{money(c.value)}</span>
-            </li>
+
+          <p className="mt-6 max-w-2xl text-[15px] leading-relaxed text-mist">
+            Les entrées du mois s’établissent à{" "}
+            <strong className="font-medium text-ink">{money(flow.inn)}</strong>, les sorties à{" "}
+            <strong className="font-medium text-ink">{money(flow.out)}</strong>. Le reste à vivre
+            est de <strong className="font-medium text-ink">{money(flow.rest)}</strong>
+            {rate > 0 ? `, soit ${rate} % des entrées gardés de côté` : null}. La santé du mois
+            reste à <strong className="font-medium text-ink">{SNAP[mode].health}</strong>.
+          </p>
+        </header>
+
+        {/* The three figures, set as a ledger row. */}
+        <dl className="grid divide-y divide-rule border-b border-rule sm:grid-cols-3 sm:divide-y-0 sm:divide-x">
+          {[
+            { label: "Entrées", value: flow.inn, tone: "text-sage" },
+            { label: "Sorties", value: flow.out, tone: "text-clay" },
+            { label: "Net", value: flow.rest, tone: flow.rest >= 0 ? "text-sage" : "text-clay" },
+          ].map((k) => (
+            <div key={k.label} className="px-6 py-6 md:px-10">
+              <dt className="text-xs font-medium tracking-wide text-mist">{k.label}</dt>
+              <dd className={cn("mt-1 font-serif text-4xl tracking-tight", k.tone)}>
+                <CountUp value={k.value} duration={700} />
+              </dd>
+            </div>
           ))}
-        </ul>
+        </dl>
+
+        <div className="grid gap-8 px-6 py-8 md:px-10 lg:grid-cols-12">
+          <section className="lg:col-span-7">
+            <h3 className="font-serif text-2xl tracking-tight">Sorties par poste</h3>
+            <ul className="mt-3 space-y-2">
+              {top.map((c) => {
+                const width = biggest ? Math.max((c.value / biggest.value) * 100, 3) : 0;
+                return (
+                  <li key={c.name}>
+                    <div className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="truncate">{c.name}</span>
+                      <span className="shrink-0 tabular-nums">{money(c.value)}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-card-2">
+                      <div
+                        className="h-full rounded-full bg-copper/80 transition-[width] duration-[var(--dur-4)] ease-[var(--ease-soft)]"
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+
+          <aside className="lg:col-span-5">
+            <h3 className="font-serif text-2xl tracking-tight">À retenir</h3>
+            <ul className="mt-3 space-y-3 text-sm">
+              {biggest ? (
+                <li className="rounded-2xl bg-card-2/70 p-3">
+                  <p className="text-xs text-mist">Poste le plus lourd</p>
+                  <p className="mt-0.5">
+                    {biggest.name} — <span className="tabular-nums">{money(biggest.value)}</span>,
+                    soit {share} % des sorties du mois.
+                  </p>
+                </li>
+              ) : null}
+              <li className="rounded-2xl bg-card-2/70 p-3">
+                <p className="text-xs text-mist">Taux d’épargne</p>
+                <p className="mt-0.5">{rate} % des entrées restent disponibles en fin de mois.</p>
+              </li>
+              <li className="rounded-2xl bg-card-2/70 p-3">
+                <p className="text-xs text-mist">Prochaine étape</p>
+                <p className="mt-0.5">
+                  Passer le contrôle mensuel pour fermer {monthName} sans rien laisser de côté.
+                </p>
+                <Link to="/controle" className="mt-1 inline-block text-sm text-copper">
+                  Ouvrir le contrôle →
+                </Link>
+              </li>
+            </ul>
+          </aside>
+        </div>
+
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-4 text-xs text-mist md:px-10">
+          <span>FREEV · livre tenu localement · {profile.email}</span>
+          <Link to="/transactions" className="text-copper">
+            Voir le journal du mois
+          </Link>
+        </footer>
       </article>
     </div>
   );
