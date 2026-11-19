@@ -15,7 +15,9 @@
   --leaf: #5dca86;
   --rose: #f08b92;
   --shadow: 0 18px 40px rgb(0 0 0 / 0.35);
-  --float: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.28), inset 0 1px 0 rgb(255 255 255 / 0.06);
+  --float:
+    0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.28),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
   color-scheme: dark;
 }
 
@@ -34,7 +36,9 @@
   --leaf: #2f9d5b;
   --rose: #d4535c;
   --shadow: 0 18px 40px rgb(23 32 51 / 0.08);
-  --float: 0 0 0 1px rgb(23 32 51 / 0.06), 0 10px 28px rgb(23 32 51 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.85);
+  --float:
+    0 0 0 1px rgb(23 32 51 / 0.06), 0 10px 28px rgb(23 32 51 / 0.06),
+    inset 0 1px 0 rgb(255 255 255 / 0.85);
   color-scheme: light;
 }
 
@@ -67,8 +71,16 @@
   body {
     background-color: var(--canvas);
     background-image:
-      radial-gradient(980px 420px at 0% -10%, color-mix(in oklab, var(--copper) 16%, transparent), transparent 55%),
-      radial-gradient(720px 360px at 100% 0%, color-mix(in oklab, var(--teal) 12%, transparent), transparent 50%);
+      radial-gradient(
+        980px 420px at 0% -10%,
+        color-mix(in oklab, var(--copper) 16%, transparent),
+        transparent 55%
+      ),
+      radial-gradient(
+        720px 360px at 100% 0%,
+        color-mix(in oklab, var(--teal) 12%, transparent),
+        transparent 50%
+      );
     color: var(--ink);
     font-family: var(--font-sans);
     text-wrap: pretty;
@@ -106,9 +118,71 @@
   background: rgb(12 16 24 / 0.46);
 }
 
+/* Numbers and headlines settle instead of popping in on first paint. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer base {
+  main > div > header,
+  main > div > section {
+    animation: rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  main > div > section:nth-child(2) {
+    animation-delay: 40ms;
+  }
+
+  main > div > section:nth-child(3) {
+    animation-delay: 80ms;
+  }
+}
+
 .grain {
-  background-image: radial-gradient(color-mix(in oklab, var(--ink) 7%, transparent) 0.6px, transparent 0.6px);
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--ink) 7%, transparent) 0.6px,
+    transparent 0.6px
+  );
   background-size: 4px 4px;
+}
+
+/* Quiet scrollbars: the app scrolls a lot, and default tracks read as chrome. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--mist) 35%, transparent) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    background-clip: content-box;
+    background-color: color-mix(in oklab, var(--mist) 35%, transparent);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in oklab, var(--mist) 55%, transparent);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+.chrome-pill::-webkit-scrollbar {
+  height: 0;
 }
 
 .chrome-pill {

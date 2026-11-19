@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 const LINKS = [
@@ -32,7 +33,10 @@ function Site({
             </Link>
           ))}
         </nav>
-        <Link to="/" className="ml-auto border border-copper px-3 py-2 text-xs uppercase tracking-widest text-copper">
+        <Link
+          to="/"
+          className="ml-auto border border-copper px-3 py-2 text-xs uppercase tracking-widest text-copper"
+        >
           Ouvrir l’app
         </Link>
       </header>
@@ -46,10 +50,12 @@ function Site({
         </section>
         <section className="grid border-b border-rule lg:grid-cols-3">
           {points.map((p, i) => (
-            <article key={p.t} className="border-b border-rule p-6 lg:border-r lg:border-b-0">
-              <p className="text-xs uppercase tracking-widest text-mist">0{i + 1}</p>
-              <h2 className="mt-3 font-serif text-2xl">{p.t}</h2>
-              <p className="mt-2 text-sm text-mist">{p.d}</p>
+            <article key={p.t} className="group p-6">
+              <span className="inline-flex size-8 items-center justify-center rounded-full bg-copper/10 text-xs font-medium text-copper">
+                0{i + 1}
+              </span>
+              <h2 className="mt-3 font-serif text-2xl tracking-tight">{p.t}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-mist">{p.d}</p>
             </article>
           ))}
         </section>
@@ -57,7 +63,7 @@ function Site({
           <h2 className="font-serif text-3xl lg:col-span-4">Tarifs</h2>
           <div className="grid gap-6 sm:grid-cols-3 lg:col-span-8">
             <Price name="Essai" price="0 €" note="14 jours, sans carte." />
-            <Price name="Personnel" price="6 €" note="Budget, récurrences, planner." />
+            <Price name="Personnel" price="6 €" note="Budget, récurrences, planner." highlight />
             <Price name="Professionnel" price="14 €" note="Factures, clients, trésorerie." />
           </div>
         </section>
@@ -91,11 +97,35 @@ function Site({
   );
 }
 
-function Price({ name, price, note }: { name: string; price: string; note: string }) {
+function Price({
+  name,
+  price,
+  note,
+  highlight,
+}: {
+  name: string;
+  price: string;
+  note: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="border-t border-copper pt-4">
-      <p className="text-xs uppercase tracking-widest text-mist">{name}</p>
-      <p className="mt-2 font-serif text-4xl">{price}</p>
+    <div
+      className={
+        highlight
+          ? "chrome-pill relative rounded-3xl bg-card p-5 ring-1 ring-copper/40"
+          : "rounded-3xl border border-rule p-5"
+      }
+    >
+      {highlight ? (
+        <span className="absolute -top-2.5 right-4 rounded-full bg-copper px-2 py-0.5 text-[11px] font-medium text-copper-ink">
+          le plus choisi
+        </span>
+      ) : null}
+      <p className="text-sm text-mist">{name}</p>
+      <p className="mt-1 font-serif text-4xl tracking-tight">
+        {price}
+        <span className="text-base text-mist"> / mois</span>
+      </p>
       <p className="mt-2 text-sm text-mist">{note}</p>
     </div>
   );
@@ -103,8 +133,14 @@ function Price({ name, price, note }: { name: string; price: string; note: strin
 
 function Faq() {
   const items = [
-    ["Faut-il relier une banque ?", "Non. Vous pouvez tenir le livre à la main, scanner un reçu, ou ajouter un compte avec son solde."],
-    ["Personnel et pro ensemble ?", "Oui. Le sélecteur en haut filtre le journal. Les factures restent dans Business."],
+    [
+      "Faut-il relier une banque ?",
+      "Non. Vous pouvez tenir le livre à la main, scanner un reçu, ou ajouter un compte avec son solde.",
+    ],
+    [
+      "Personnel et pro ensemble ?",
+      "Oui. Le sélecteur en haut filtre le journal. Les factures restent dans Business.",
+    ],
     ["Où sont les données ?", "Dans cette démo, sur cet appareil. Rien n’est envoyé à une banque."],
     ["Puis-je exporter ?", "Oui, depuis Paramètres ou depuis le rapport du mois."],
   ];
@@ -115,9 +151,19 @@ function Faq() {
       <ul className="mt-6 max-w-3xl divide-y divide-rule border-y border-rule">
         {items.map(([q, a], i) => (
           <li key={q}>
-            <button type="button" className="flex w-full items-center justify-between py-4 text-left" onClick={() => setOpen(i)}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between py-4 text-left"
+              onClick={() => setOpen(i)}
+            >
               <span>{q}</span>
-              <span className="text-copper">{open === i ? "–" : "+"}</span>
+              <ChevronDown
+                className={
+                  open === i
+                    ? "size-4 rotate-180 text-copper transition-transform"
+                    : "size-4 text-mist transition-transform"
+                }
+              />
             </button>
             {open === i ? <p className="pb-4 text-sm text-mist">{a}</p> : null}
           </li>
@@ -209,9 +255,18 @@ export function Legal({ title, children }: { title: string; children: ReactNode 
 export function Privacy() {
   return (
     <Legal title="Confidentialité">
-      <p>FREEV tient un livre de comptes. Dans cette maquette, les opérations, objectifs et réglages restent dans le navigateur, sur cet appareil.</p>
-      <p>Aucun relevé bancaire n’est demandé. Les reçus que vous déposez ne quittent pas la page : seule une lecture locale propose un montant.</p>
-      <p>L’export JSON vous appartient. Effacer les données vide le journal local sans conserver de copie.</p>
+      <p>
+        FREEV tient un livre de comptes. Dans cette maquette, les opérations, objectifs et réglages
+        restent dans le navigateur, sur cet appareil.
+      </p>
+      <p>
+        Aucun relevé bancaire n’est demandé. Les reçus que vous déposez ne quittent pas la page :
+        seule une lecture locale propose un montant.
+      </p>
+      <p>
+        L’export JSON vous appartient. Effacer les données vide le journal local sans conserver de
+        copie.
+      </p>
       <p>Contact : bonjour@freev.app.</p>
     </Legal>
   );
@@ -220,9 +275,18 @@ export function Privacy() {
 export function Terms() {
   return (
     <Legal title="Conditions">
-      <p>FREEV est un outil de suivi. Il ne fournit pas de conseil en investissement, ni un service de paiement.</p>
-      <p>L’essai dure 14 jours. Le tarif Personnel est de 6 € par mois, le tarif Professionnel de 14 € par mois. Vous pouvez arrêter avant le renouvellement.</p>
-      <p>Les chiffres affichés dépendent de ce que vous saisissez. Un solde projeté n’est pas une garantie bancaire.</p>
+      <p>
+        FREEV est un outil de suivi. Il ne fournit pas de conseil en investissement, ni un service
+        de paiement.
+      </p>
+      <p>
+        L’essai dure 14 jours. Le tarif Personnel est de 6 € par mois, le tarif Professionnel de 14
+        € par mois. Vous pouvez arrêter avant le renouvellement.
+      </p>
+      <p>
+        Les chiffres affichés dépendent de ce que vous saisissez. Un solde projeté n’est pas une
+        garantie bancaire.
+      </p>
       <p>Le droit applicable est le droit français.</p>
     </Legal>
   );

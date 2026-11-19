@@ -29,6 +29,7 @@ import { fr } from "date-fns/locale";
 import { HELP, type Mode } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
 import { Overlays } from "@/components/overlays";
+import { useUndoableToast } from "@/components/undo";
 import { cn } from "@/lib/utils";
 
 const RAIL = [
@@ -66,7 +67,20 @@ const MODES: { id: Mode; label: string; icon: typeof UserRound }[] = [
   { id: "both", label: "Global", icon: Globe },
 ];
 
-const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const MONTHS = [
+  "janv.",
+  "févr.",
+  "mars",
+  "avr.",
+  "mai",
+  "juin",
+  "juil.",
+  "août",
+  "sept.",
+  "oct.",
+  "nov.",
+  "déc.",
+];
 
 function isActive(path: string, to: string) {
   return to === "/" ? path === "/" : path === to || path.startsWith(`${to}/`);
@@ -84,7 +98,15 @@ function monthLabel(month: string) {
 
 function LinesIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+    <svg
+      viewBox="0 0 24 24"
+      className="size-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M4 7h16M4 12h16M4 17h11" />
     </svg>
   );
@@ -173,7 +195,10 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
         </button>
       </div>
 
-      <nav className="mt-3 flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto px-1" aria-label="Navigation">
+      <nav
+        className="mt-3 flex w-full flex-1 flex-col items-center gap-1 overflow-y-auto px-1"
+        aria-label="Navigation"
+      >
         {RAIL.map((item) => {
           const Icon = item.icon;
           const on = isActive(path, item.to);
@@ -186,11 +211,15 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
                 aria-current={on ? "page" : undefined}
                 className="relative flex h-10 w-full items-center justify-center"
               >
-                {on ? <span className="absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full bg-copper" /> : null}
+                {on ? (
+                  <span className="absolute top-1/2 left-0 h-5 w-1 -translate-y-1/2 rounded-r-full bg-copper" />
+                ) : null}
                 <span
                   className={cn(
                     "inline-flex size-9 items-center justify-center rounded-2xl text-mist transition-[background-color,color,box-shadow] duration-150",
-                    on ? "bg-copper/12 text-copper shadow-[0_0_0_5px_color-mix(in_oklab,var(--copper)_10%,transparent)]" : "hover:bg-card-2 hover:text-ink",
+                    on
+                      ? "bg-copper/12 text-copper shadow-[0_0_0_5px_color-mix(in_oklab,var(--copper)_10%,transparent)]"
+                      : "hover:bg-card-2 hover:text-ink",
                   )}
                 >
                   <Icon className="size-[18px]" strokeWidth={1.7} />
@@ -217,9 +246,15 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
                 {item.icon === "face" ? (
                   <FaceIcon className="size-7 text-teal" />
                 ) : item.icon === "store" ? (
-                  <Store className={cn("size-[18px]", on ? "text-copper" : "text-mist")} strokeWidth={1.7} />
+                  <Store
+                    className={cn("size-[18px]", on ? "text-copper" : "text-mist")}
+                    strokeWidth={1.7}
+                  />
                 ) : (
-                  <Shirt className={cn("size-[18px]", on ? "text-copper" : "text-mist")} strokeWidth={1.7} />
+                  <Shirt
+                    className={cn("size-[18px]", on ? "text-copper" : "text-mist")}
+                    strokeWidth={1.7}
+                  />
                 )}
               </Link>
             </RailTip>
@@ -289,6 +324,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
+  useUndoableToast();
   const mode = useFreev((s) => s.mode);
   const setMode = useFreev((s) => s.setMode);
   const month = useFreev((s) => s.month);
@@ -307,7 +343,8 @@ export function Shell({ children }: { children: ReactNode }) {
     const apply = () => {
       const choice = useFreev.getState().theme;
       const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.dataset.theme = choice === "system" ? (dark ? "ink" : "paper") : choice;
+      document.documentElement.dataset.theme =
+        choice === "system" ? (dark ? "ink" : "paper") : choice;
     };
     apply();
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -343,12 +380,19 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="relative px-2 pt-2 md:px-3 md:pt-3">
-          <header className="chrome-pill flex flex-wrap items-center gap-2 rounded-3xl bg-card/95 px-2 py-2 backdrop-blur-md lg:h-14 lg:flex-nowrap lg:overflow-x-auto lg:rounded-full lg:py-0">
+          <header className="chrome-pill flex items-center gap-2 overflow-x-auto rounded-3xl bg-card/95 px-2 py-2 [scrollbar-width:none] backdrop-blur-md lg:h-14 lg:flex-nowrap lg:rounded-full lg:py-0">
             <div className="flex h-10 shrink-0 items-center rounded-full bg-card-2 px-1">
-              <button type="button" aria-label="Mois précédent" className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-ink" onClick={() => setMonth(shiftMonth(month, -1))}>
+              <button
+                type="button"
+                aria-label="Mois précédent"
+                className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-ink"
+                onClick={() => setMonth(shiftMonth(month, -1))}
+              >
                 <ChevronLeft className="size-4" />
               </button>
-              <span className="px-1 text-center text-sm whitespace-nowrap capitalize">{monthLabel(month)}</span>
+              <span className="px-1 text-center text-sm whitespace-nowrap capitalize">
+                {monthLabel(month)}
+              </span>
               <button
                 type="button"
                 aria-label="Choisir un mois"
@@ -358,12 +402,21 @@ export function Shell({ children }: { children: ReactNode }) {
               >
                 <Calendar className="size-4" />
               </button>
-              <button type="button" aria-label="Mois suivant" className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-ink" onClick={() => setMonth(shiftMonth(month, 1))}>
+              <button
+                type="button"
+                aria-label="Mois suivant"
+                className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-ink"
+                onClick={() => setMonth(shiftMonth(month, 1))}
+              >
                 <ChevronRight className="size-4" />
               </button>
             </div>
 
-            <div className="flex h-10 shrink-0 items-center rounded-full bg-card-2 p-1" role="tablist" aria-label="Périmètre">
+            <div
+              className="flex h-10 shrink-0 items-center rounded-full bg-card-2 p-1"
+              role="tablist"
+              aria-label="Périmètre"
+            >
               {MODES.map((m) => {
                 const Icon = m.icon;
                 const on = mode === m.id;
@@ -394,11 +447,25 @@ export function Shell({ children }: { children: ReactNode }) {
               >
                 <Search className="size-4" />
                 <span className="hidden xl:inline">Rechercher</span>
-                <kbd className="hidden rounded-md bg-card-2 px-1.5 py-0.5 text-xs text-mist xl:inline">Ctrl K</kbd>
+                <kbd className="hidden rounded-md bg-card-2 px-1.5 py-0.5 text-xs text-mist xl:inline">
+                  Ctrl K
+                </kbd>
               </button>
-              <TopAction icon={Target} label="Budget du mois" onClick={() => open({ name: "budget" })} />
-              <TopAction icon={Landmark} label="Solde de départ" onClick={() => open({ name: "opening" })} />
-              <TopAction icon={ArrowLeftRight} label="Entre comptes" onClick={() => open({ name: "transfer" })} />
+              <TopAction
+                icon={Target}
+                label="Budget du mois"
+                onClick={() => open({ name: "budget" })}
+              />
+              <TopAction
+                icon={Landmark}
+                label="Solde de départ"
+                onClick={() => open({ name: "opening" })}
+              />
+              <TopAction
+                icon={ArrowLeftRight}
+                label="Entre comptes"
+                onClick={() => open({ name: "transfer" })}
+              />
               <button
                 type="button"
                 onClick={() => open({ name: "tx" })}
@@ -413,11 +480,21 @@ export function Shell({ children }: { children: ReactNode }) {
           {cal ? (
             <div className="absolute top-16 left-3 z-30 w-64 rounded-2xl border border-rule bg-card p-3 shadow-lift md:left-4">
               <div className="flex items-center justify-between">
-                <button type="button" aria-label="Année précédente" className="inline-flex size-8 items-center justify-center rounded-full hover:bg-card-2" onClick={() => setYear((y) => y - 1)}>
+                <button
+                  type="button"
+                  aria-label="Année précédente"
+                  className="inline-flex size-8 items-center justify-center rounded-full hover:bg-card-2"
+                  onClick={() => setYear((y) => y - 1)}
+                >
                   <ChevronLeft className="size-4" />
                 </button>
                 <p className="text-sm font-medium">{year}</p>
-                <button type="button" aria-label="Année suivante" className="inline-flex size-8 items-center justify-center rounded-full hover:bg-card-2" onClick={() => setYear((y) => y + 1)}>
+                <button
+                  type="button"
+                  aria-label="Année suivante"
+                  className="inline-flex size-8 items-center justify-center rounded-full hover:bg-card-2"
+                  onClick={() => setYear((y) => y + 1)}
+                >
                   <ChevronRight className="size-4" />
                 </button>
               </div>
@@ -433,7 +510,10 @@ export function Shell({ children }: { children: ReactNode }) {
                         setMonth(id);
                         setCal(false);
                       }}
-                      className={cn("h-9 rounded-xl text-sm", on ? "bg-copper text-copper-ink" : "hover:bg-card-2")}
+                      className={cn(
+                        "h-9 rounded-xl text-sm",
+                        on ? "bg-copper text-copper-ink" : "hover:bg-card-2",
+                      )}
                     >
                       {name}
                     </button>
@@ -461,7 +541,12 @@ function TopAction({
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} title={label} className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sm text-ink transition-colors hover:bg-card-2">
+    <button
+      type="button"
+      onClick={onClick}
+      title={label}
+      className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sm text-ink transition-colors hover:bg-card-2"
+    >
       <Icon className="size-4 text-mist" strokeWidth={1.7} />
       <span className="hidden lg:inline">{label}</span>
       <span className="sr-only lg:hidden">{label}</span>
@@ -482,12 +567,23 @@ function SearchOverlay() {
   const pages = [...RAIL, ...LIFE.map((l) => ({ to: l.to, label: l.label })), ...MORE].filter(
     (i) => !q || i.label.toLowerCase().includes(q),
   );
-  const ops = txs.filter((t) => !q || `${t.label} ${t.category}`.toLowerCase().includes(q)).slice(0, 6);
+  const ops = txs
+    .filter((t) => !q || `${t.label} ${t.category}`.toLowerCase().includes(q))
+    .slice(0, 6);
   const help = HELP.filter((h) => !q || h.title.toLowerCase().includes(q));
   return (
     <div className="fixed inset-0 z-50">
-      <button type="button" aria-label="Fermer la recherche" className="veil absolute inset-0" onClick={() => setSearch(false)} />
-      <div role="dialog" aria-label="Recherche" className="relative mx-auto mt-16 w-full max-w-xl rounded-3xl border border-rule bg-card p-5 shadow-lift">
+      <button
+        type="button"
+        aria-label="Fermer la recherche"
+        className="veil absolute inset-0"
+        onClick={() => setSearch(false)}
+      />
+      <div
+        role="dialog"
+        aria-label="Recherche"
+        className="relative mx-auto mt-16 w-full max-w-xl rounded-3xl border border-rule bg-card p-5 shadow-lift"
+      >
         <div className="flex items-center gap-3 border-b border-rule">
           <Search className="size-4 text-mist" />
           <input
@@ -504,7 +600,12 @@ function SearchOverlay() {
         <div className="mt-4 space-y-4">
           <Group title="Pages">
             {pages.map((p) => (
-              <Link key={p.to} to={p.to} onClick={() => setSearch(false)} className="block rounded-xl px-2 py-2 text-sm hover:bg-card-2">
+              <Link
+                key={p.to}
+                to={p.to}
+                onClick={() => setSearch(false)}
+                className="block rounded-xl px-2 py-2 text-sm hover:bg-card-2"
+              >
                 {p.label}
               </Link>
             ))}
@@ -512,14 +613,24 @@ function SearchOverlay() {
           <Group title="Opérations">
             {ops.length === 0 ? <p className="text-sm text-mist">Aucune opération.</p> : null}
             {ops.map((t) => (
-              <Link key={t.id} to="/transactions" onClick={() => setSearch(false)} className="block rounded-xl px-2 py-2 text-sm hover:bg-card-2">
+              <Link
+                key={t.id}
+                to="/transactions"
+                onClick={() => setSearch(false)}
+                className="block rounded-xl px-2 py-2 text-sm hover:bg-card-2"
+              >
                 {t.label}
               </Link>
             ))}
           </Group>
           <Group title="Aide">
             {help.map((h) => (
-              <Link key={h.id} to="/aide" onClick={() => setSearch(false)} className="block rounded-xl px-2 py-2 text-sm hover:bg-card-2">
+              <Link
+                key={h.id}
+                to="/aide"
+                onClick={() => setSearch(false)}
+                className="block rounded-xl px-2 py-2 text-sm hover:bg-card-2"
+              >
                 {h.title}
               </Link>
             ))}

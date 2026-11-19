@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { useEffect, useState, type ReactNode } from "react";
+import { Check, X } from "lucide-react";
 import { Button, Field, Select, Toggle } from "@/components/ui";
 import { CATEGORIES, LOGOS, SCHEDULE, TODAY, type Scope, type TxKind } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
-import { uid } from "@/lib/utils";
+import { cn, money, uid } from "@/lib/utils";
 
 export function Overlays() {
   const dialog = useFreev((s) => s.dialog);
@@ -27,27 +27,70 @@ export function Overlays() {
 function Modal({
   title,
   lede,
+  kicker = "Journal",
   children,
 }: {
   title: string;
   lede?: string;
+  kicker?: string;
   children: ReactNode;
 }) {
   const open = useFreev((s) => s.open);
+
+  // Escape closes the dialog — expected everywhere, and previously missing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") open(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
-      <button type="button" aria-label="Fermer" className="veil absolute inset-0" onClick={() => open(null)} />
+      <button
+        type="button"
+        aria-label="Fermer"
+        className="veil absolute inset-0"
+        onClick={() => open(null)}
+      />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className="relative max-h-screen w-full overflow-y-auto rounded-t-3xl border border-rule bg-card p-5 shadow-lift sm:max-w-lg sm:rounded-3xl sm:p-6"
       >
-        <p className="text-xs uppercase tracking-widest text-copper">Journal</p>
-        <h2 className="mt-1 font-serif text-3xl">{title}</h2>
-        {lede ? <p className="mt-2 text-sm text-mist">{lede}</p> : null}
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium tracking-wide text-copper">{kicker}</p>
+            <h2 className="mt-1 font-serif text-3xl leading-tight tracking-tight">{title}</h2>
+            {lede ? (
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-mist">{lede}</p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={() => open(null)}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-rule bg-card text-mist transition-colors hover:border-copper/40 hover:text-ink"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
         <div className="mt-6">{children}</div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Action bar for every dialog: cancel on the left, the committing action on the
+ * right, stacked full-width on phones so nothing lands under the thumb edge.
+ */
+function DialogActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="sticky bottom-0 -mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-rule/60 bg-card/95 px-5 py-4 backdrop-blur sm:static sm:mx-0 sm:flex-row sm:justify-end sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:pt-2">
+      {children}
     </div>
   );
 }
@@ -59,13 +102,23 @@ function KindSwitch({ value, onChange }: { value: TxKind; onChange: (k: TxKind) 
     { id: "transfer", label: "Virement" },
   ];
   return (
-    <div className="flex border border-rule">
+    <div
+      className="flex gap-1 rounded-full bg-card-2 p-1"
+      role="tablist"
+      aria-label="Type d’opération"
+    >
       {opts.map((o) => (
         <button
           key={o.id}
           type="button"
+          role="tab"
+          aria-selected={value === o.id}
           onClick={() => onChange(o.id)}
-          className={value === o.id ? "h-10 flex-1 bg-copper text-xs uppercase tracking-widest text-copper-ink" : "h-10 flex-1 text-xs uppercase tracking-widest text-mist"}
+          className={
+            value === o.id
+              ? "h-9 flex-1 rounded-full bg-copper text-sm font-medium text-copper-ink shadow-float"
+              : "h-9 flex-1 rounded-full text-sm text-mist transition-colors hover:text-ink"
+          }
         >
           {o.label}
         </button>
@@ -79,17 +132,24 @@ function TxDialog() {
   const accounts = useFreev((s) => s.accounts);
   const addTx = useFreev((s) => s.addTx);
   const open = useFreev((s) => s.open);
-  const date0 = dialog && dialog.name === "tx" && dialog.date ? dialog.date : TODAY;
-  const [kind, setKind] = useState<TxKind>("expense");
-  const [label, setLabel] = useState("");
-  const [amount, setAmount] = useState("");
+  const txs = useFreev((s) => s.txs);
+  const updateTx = useFreev((s) => s.updateTx);
+  const editId = dialog && dialog.name === "tx" ? dialog.editId : undefined;
+  const existing = txs.find((t) => t.id === editId);
+  const date0 =
+    existing?.date ?? (dialog && dialog.name === "tx" && dialog.date ? dialog.date : TODAY);
+  const [kind, setKind] = useState<TxKind>(existing?.kind ?? "expense");
+  const [label, setLabel] = useState(existing?.label ?? "");
+  const [amount, setAmount] = useState(existing ? String(Math.abs(existing.amount)) : "");
   const [date, setDate] = useState(date0);
-  const [category, setCategory] = useState("Alimentation");
-  const [accountId, setAccountId] = useState(accounts[0]?.id ?? "courant");
-  const [toId, setToId] = useState(accounts[1]?.id ?? accounts[0]?.id ?? "");
-  const [scope, setScope] = useState<Scope>("perso");
-  const [recurring, setRecurring] = useState(false);
-  const [logo, setLogo] = useState("FV");
+  const [category, setCategory] = useState(existing?.category ?? "Alimentation");
+  const [accountId, setAccountId] = useState(existing?.accountId ?? accounts[0]?.id ?? "courant");
+  const [toId, setToId] = useState(
+    existing?.toAccountId ?? accounts[1]?.id ?? accounts[0]?.id ?? "",
+  );
+  const [scope, setScope] = useState<Scope>(existing?.scope ?? "perso");
+  const [recurring, setRecurring] = useState(existing?.recurring ?? false);
+  const [logo, setLogo] = useState(existing?.logo ?? "FV");
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState("");
 
@@ -105,7 +165,22 @@ function TxDialog() {
         return;
       }
       useFreev.getState().transfer(accountId, toId, n, label, date);
-      toast("Virement enregistré");
+      return;
+    }
+    const amountValue = kind === "expense" ? -n : n;
+    if (existing) {
+      updateTx(existing.id, {
+        date,
+        label: label.trim(),
+        category,
+        accountId,
+        amount: amountValue,
+        scope,
+        kind,
+        recurring,
+        logo,
+      });
+      open(null);
       return;
     }
     addTx({
@@ -113,22 +188,35 @@ function TxDialog() {
       label: label.trim(),
       category,
       accountId,
-      amount: kind === "expense" ? -n : n,
+      amount: amountValue,
       scope,
       kind,
       recurring,
       pending: false,
       logo,
     });
-    toast("Opération ajoutée au journal");
   }
 
   return (
-    <Modal title="Nouvelle opération" lede="Dépense, revenu, ou mouvement entre vos comptes.">
+    <Modal
+      title={existing ? "Modifier l’opération" : "Nouvelle opération"}
+      kicker="Opérations"
+      lede={
+        existing
+          ? "Le solde du compte est recalculé automatiquement."
+          : "Dépense, revenu, ou mouvement entre vos comptes."
+      }
+    >
       <div className="space-y-4">
         <KindSwitch value={kind} onChange={setKind} />
         <Field label="Libellé" value={label} onChange={(e) => setLabel(e.target.value)} />
-        <Field label="Montant" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" />
+        <Field
+          label="Montant"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0,00"
+        />
         <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         {kind !== "transfer" ? (
           <Select label="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -137,7 +225,11 @@ function TxDialog() {
             ))}
           </Select>
         ) : null}
-        <Select label={kind === "transfer" ? "Depuis" : "Compte"} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+        <Select
+          label={kind === "transfer" ? "Depuis" : "Compte"}
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+        >
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
               {a.name}
@@ -153,7 +245,11 @@ function TxDialog() {
             ))}
           </Select>
         ) : (
-          <Select label="Périmètre" value={scope} onChange={(e) => setScope(e.target.value as Scope)}>
+          <Select
+            label="Périmètre"
+            value={scope}
+            onChange={(e) => setScope(e.target.value as Scope)}
+          >
             <option value="perso">Personnel</option>
             <option value="pro">Professionnel</option>
           </Select>
@@ -178,7 +274,11 @@ function TxDialog() {
                   setLogo(mark);
                   setPicking(false);
                 }}
-                className={mark === logo ? "h-12 border border-copper font-serif text-copper" : "h-12 border border-rule font-serif"}
+                className={
+                  mark === logo
+                    ? "h-12 border border-copper font-serif text-copper"
+                    : "h-12 border border-rule font-serif"
+                }
               >
                 {mark}
               </button>
@@ -186,14 +286,14 @@ function TxDialog() {
           </div>
         ) : null}
         {error ? <p className="text-sm text-clay">{error}</p> : null}
-        <div className="flex gap-2 pt-2">
-          <Button type="button" variant="primary" onClick={save}>
-            Enregistrer
-          </Button>
+        <DialogActions>
           <Button type="button" onClick={() => open(null)}>
             Annuler
           </Button>
-        </div>
+          <Button type="button" variant="primary" onClick={save}>
+            {existing ? "Mettre à jour" : "Enregistrer"}
+          </Button>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -206,9 +306,18 @@ function DuplicateDialog() {
   const [income, setIncome] = useState(true);
   const [expense, setExpense] = useState(true);
   return (
-    <Modal title="Dupliquer le mois" lede="Reprend les échéances connues sur le mois choisi.">
+    <Modal
+      title="Dupliquer le mois"
+      kicker="Planification"
+      lede="Reprend les échéances connues sur le mois choisi."
+    >
       <div className="space-y-4">
-        <Field label="Mois cible" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
+        <Field
+          label="Mois cible"
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+        />
         <div className="flex items-center justify-between py-2">
           <span className="text-sm">Reprendre les revenus</span>
           <Toggle on={income} onChange={setIncome} label="Revenus" />
@@ -223,22 +332,24 @@ function DuplicateDialog() {
               <span>
                 {s.label} · jour {s.day}
               </span>
-              <span className="tabular-nums">{s.amount > 0 ? "+" : "−"}{Math.abs(s.amount)} €</span>
+              <span className="tabular-nums">
+                {s.amount > 0 ? "+" : "−"}
+                {Math.abs(s.amount)} €
+              </span>
             </li>
           ))}
         </ul>
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
               mark(month);
-              toast(`Échéances posées sur ${month}`);
             }}
           >
             Dupliquer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -250,7 +361,11 @@ function BudgetDialog() {
   const open = useFreev((s) => s.open);
   const [draft, setDraft] = useState(budgets);
   return (
-    <Modal title="Budget du mois" lede="Plafonds par catégorie. Le contrôle mensuel s’y réfère.">
+    <Modal
+      title="Budget du mois"
+      kicker="Budget"
+      lede="Plafonds par catégorie. Le contrôle mensuel s’y réfère."
+    >
       <div className="space-y-3">
         {Object.entries(draft).map(([k, v]) => (
           <Field
@@ -258,21 +373,22 @@ function BudgetDialog() {
             label={k}
             inputMode="decimal"
             value={String(v)}
-            onChange={(e) => setDraft({ ...draft, [k]: Number(e.target.value.replace(",", ".")) || 0 })}
+            onChange={(e) =>
+              setDraft({ ...draft, [k]: Number(e.target.value.replace(",", ".")) || 0 })
+            }
           />
         ))}
-        <div className="flex gap-2 pt-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
               setBudgets(draft);
-              toast("Budget enregistré");
             }}
           >
             Enregistrer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -286,7 +402,11 @@ function OpeningDialog() {
   const current = accounts.find((a) => a.id === id);
   const [amount, setAmount] = useState(String(current?.balance ?? 0));
   return (
-    <Modal title="Solde de départ" lede="Corrige le solde sans réécrire les opérations déjà passées.">
+    <Modal
+      title="Solde de départ"
+      kicker="Comptes"
+      lede="Corrige le solde sans réécrire les opérations déjà passées."
+    >
       <div className="space-y-4">
         <Select
           label="Compte"
@@ -303,8 +423,14 @@ function OpeningDialog() {
             </option>
           ))}
         </Select>
-        <Field label="Solde" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <div className="flex gap-2">
+        <Field
+          label="Solde"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -312,13 +438,11 @@ function OpeningDialog() {
               if (!Number.isFinite(n)) return;
               patch(id, { balance: n });
               open(null);
-              toast("Solde mis à jour");
             }}
           >
             Mettre à jour
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -334,7 +458,11 @@ function TransferDialog() {
   const [date, setDate] = useState(TODAY);
   const [error, setError] = useState("");
   return (
-    <Modal title="Entre comptes" lede="Le solde global ne change pas. Seule la répartition bouge.">
+    <Modal
+      title="Entre comptes"
+      kicker="Comptes"
+      lede="Le solde global ne change pas. Seule la répartition bouge."
+    >
       <div className="space-y-4">
         <Select label="Depuis" value={from} onChange={(e) => setFrom(e.target.value)}>
           {accounts.map((a) => (
@@ -354,7 +482,8 @@ function TransferDialog() {
         <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <Field label="Note" value={note} onChange={(e) => setNote(e.target.value)} />
         {error ? <p className="text-sm text-clay">{error}</p> : null}
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -364,13 +493,11 @@ function TransferDialog() {
                 return;
               }
               useFreev.getState().transfer(from, to, n, note, date);
-              toast("Virement passé");
             }}
           >
             Virer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -388,10 +515,14 @@ function GoalDialog({ id }: { id?: string }) {
   const [due, setDue] = useState(existing?.due ?? "2027-06-01");
   const [accountId, setAccountId] = useState(existing?.accountId ?? "livret");
   return (
-    <Modal title={existing ? "Ajuster l’objectif" : "Nouvel objectif"}>
+    <Modal title={existing ? "Ajuster l’objectif" : "Nouvel objectif"} kicker="Épargne">
       <div className="space-y-4">
         <Field label="Nom" value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="Déjà mis de côté" value={current} onChange={(e) => setCurrent(e.target.value)} />
+        <Field
+          label="Déjà mis de côté"
+          value={current}
+          onChange={(e) => setCurrent(e.target.value)}
+        />
         <Field label="Cible" value={target} onChange={(e) => setTarget(e.target.value)} />
         <Field label="Échéance" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
         <Select label="Compte" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
@@ -401,7 +532,8 @@ function GoalDialog({ id }: { id?: string }) {
             </option>
           ))}
         </Select>
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -414,13 +546,11 @@ function GoalDialog({ id }: { id?: string }) {
                 due,
                 accountId,
               });
-              toast("Objectif enregistré");
             }}
           >
             Enregistrer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -437,14 +567,19 @@ function DebtDialog({ id }: { id?: string }) {
   const [rate, setRate] = useState(String(existing?.rate ?? 0));
   const [end, setEnd] = useState(existing?.end ?? "2028-01-01");
   return (
-    <Modal title={existing ? "Modifier la dette" : "Nouvelle dette"}>
+    <Modal title={existing ? "Modifier la dette" : "Nouvelle dette"} kicker="Dettes">
       <div className="space-y-4">
         <Field label="Nom" value={name} onChange={(e) => setName(e.target.value)} />
-        <Field label="Reste à payer" value={remaining} onChange={(e) => setRemaining(e.target.value)} />
+        <Field
+          label="Reste à payer"
+          value={remaining}
+          onChange={(e) => setRemaining(e.target.value)}
+        />
         <Field label="Mensualité" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
         <Field label="Taux (%)" value={rate} onChange={(e) => setRate(e.target.value)} />
         <Field label="Fin" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -457,13 +592,11 @@ function DebtDialog({ id }: { id?: string }) {
                 rate: Number(rate.replace(",", ".")) || 0,
                 end,
               });
-              toast("Dette enregistrée");
             }}
           >
             Enregistrer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -480,7 +613,11 @@ function AccountsDialog() {
   const [scope, setScope] = useState<Scope>("perso");
   const [balance, setBalance] = useState("0");
   return (
-    <Modal title="Gestion des comptes" lede="Ajoutez un compte ou retirez-en un. Le solde de départ se règle à part.">
+    <Modal
+      title="Gestion des comptes"
+      kicker="Comptes"
+      lede="Ajoutez un compte ou retirez-en un. Le solde de départ se règle à part."
+    >
       <ul className="divide-y divide-rule border-y border-rule">
         {accounts.map((a) => (
           <li key={a.id} className="flex items-center justify-between gap-3 py-3">
@@ -509,7 +646,8 @@ function AccountsDialog() {
           <option value="pro">Professionnel</option>
         </Select>
         <Field label="Solde initial" value={balance} onChange={(e) => setBalance(e.target.value)} />
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Fermer</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -522,16 +660,14 @@ function AccountsDialog() {
                 kind,
               });
               setName("");
-              toast("Compte ajouté");
             }}
           >
             Ajouter
           </Button>
-          <Button onClick={() => open(null)}>Fermer</Button>
           <Button size="sm" onClick={() => open({ name: "opening" })}>
             Solde de départ
           </Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -541,27 +677,67 @@ function PickAccountDialog() {
   const accounts = useFreev((s) => s.accounts);
   const active = useFreev((s) => s.activeAccountId);
   const setActive = useFreev((s) => s.setActiveAccount);
+  const open = useFreev((s) => s.open);
   const [id, setId] = useState(active);
   return (
-    <Modal title="Choisir un compte" lede="Le compte actif sert de défaut pour les nouvelles opérations.">
+    <Modal
+      title="Choisir un compte"
+      kicker="Comptes"
+      lede="Le compte actif sert de défaut pour les nouvelles opérations."
+    >
       <div className="space-y-2">
-        {accounts.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => setId(a.id)}
-            className={id === a.id ? "flex w-full items-center justify-between border border-copper px-3 py-3 text-left" : "flex w-full items-center justify-between border border-rule px-3 py-3 text-left"}
-          >
-            <span>
-              <span className="block text-sm">{a.name}</span>
-              <span className="text-xs text-mist">{a.bank}</span>
-            </span>
-            <span className="text-xs uppercase tracking-widest">{a.scope}</span>
-          </button>
-        ))}
-        <Button variant="primary" className="mt-3" onClick={() => setActive(id)}>
-          Utiliser ce compte
-        </Button>
+        {accounts.map((a) => {
+          const on = id === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setId(a.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors",
+                on
+                  ? "border-copper/50 bg-copper/8 ring-1 ring-copper/25"
+                  : "border-rule bg-card hover:border-copper/25",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold",
+                  a.kind === "pro"
+                    ? "bg-copper/12 text-copper"
+                    : a.kind === "epargne"
+                      ? "bg-sage/15 text-sage"
+                      : "bg-teal/15 text-teal",
+                )}
+              >
+                {a.bank.slice(0, 2).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm">{a.name}</span>
+                <span className="text-xs text-mist">
+                  {a.bank} · {a.scope === "pro" ? "professionnel" : "personnel"}
+                </span>
+              </span>
+              <span className="text-sm tabular-nums text-mist">{money(a.balance)}</span>
+              <span
+                className={cn(
+                  "inline-flex size-5 shrink-0 items-center justify-center rounded-full border",
+                  on ? "border-copper bg-copper text-copper-ink" : "border-rule",
+                )}
+              >
+                {on ? <Check className="size-3" strokeWidth={3} /> : null}
+              </span>
+            </button>
+          );
+        })}
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button variant="primary" onClick={() => setActive(id)}>
+            Utiliser ce compte
+          </Button>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -580,7 +756,7 @@ function RecurrenceDialog({ id }: { id?: string }) {
   const [scope, setScope] = useState<Scope>(existing?.scope ?? "perso");
   const [income, setIncome] = useState(existing ? existing.amount > 0 : false);
   return (
-    <Modal title={existing ? "Modifier la récurrence" : "Nouvelle récurrence"}>
+    <Modal title={existing ? "Modifier la récurrence" : "Nouvelle récurrence"} kicker="Récurrences">
       <div className="space-y-4">
         <Field label="Libellé" value={label} onChange={(e) => setLabel(e.target.value)} />
         <Field label="Montant" value={amount} onChange={(e) => setAmount(e.target.value)} />
@@ -598,7 +774,8 @@ function RecurrenceDialog({ id }: { id?: string }) {
           <span className="text-sm">C’est un revenu</span>
           <Toggle on={income} onChange={setIncome} label="Revenu" />
         </div>
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -608,7 +785,15 @@ function RecurrenceDialog({ id }: { id?: string }) {
               const d = Math.min(28, Math.max(1, Number(day) || 1));
               const date = `2026-11-${String(d).padStart(2, "0")}`;
               if (existing) {
-                update(existing.id, { label: label.trim(), amount: signed, category, scope, date, recurring: true, kind: income ? "income" : "expense" });
+                update(existing.id, {
+                  label: label.trim(),
+                  amount: signed,
+                  category,
+                  scope,
+                  date,
+                  recurring: true,
+                  kind: income ? "income" : "expense",
+                });
                 open(null);
               } else {
                 add({
@@ -623,13 +808,11 @@ function RecurrenceDialog({ id }: { id?: string }) {
                   pending: true,
                 });
               }
-              toast("Récurrence enregistrée");
             }}
           >
             Enregistrer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -642,12 +825,22 @@ function TrialDialog() {
   const [price, setPrice] = useState("");
   const [trialEnd, setTrialEnd] = useState("2026-12-19");
   return (
-    <Modal title="Nouvel essai" lede="On vous prévient avant la fin de la période gratuite.">
+    <Modal
+      title="Nouvel essai"
+      kicker="Abonnements"
+      lede="On vous prévient avant la fin de la période gratuite."
+    >
       <div className="space-y-4">
         <Field label="Service" value={name} onChange={(e) => setName(e.target.value)} />
         <Field label="Prix ensuite" value={price} onChange={(e) => setPrice(e.target.value)} />
-        <Field label="Fin de l’essai" type="date" value={trialEnd} onChange={(e) => setTrialEnd(e.target.value)} />
-        <div className="flex gap-2">
+        <Field
+          label="Fin de l’essai"
+          type="date"
+          value={trialEnd}
+          onChange={(e) => setTrialEnd(e.target.value)}
+        />
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -660,13 +853,11 @@ function TrialDialog() {
                 status: "essai",
                 trialEnd,
               });
-              toast("Essai ajouté");
             }}
           >
             Ajouter
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -679,25 +870,24 @@ function InvoiceDialog() {
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(TODAY);
   return (
-    <Modal title="Nouvelle facture">
+    <Modal title="Nouvelle facture" kicker="Business">
       <div className="space-y-4">
         <Field label="Client" value={client} onChange={(e) => setClient(e.target.value)} />
         <Field label="Montant" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <div className="flex gap-2">
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
               const n = Number(amount.replace(",", "."));
               if (!client.trim() || !n) return;
               add({ client: client.trim(), amount: n, status: "en attente", date });
-              toast("Facture créée");
             }}
           >
             Créer
           </Button>
-          <Button onClick={() => open(null)}>Annuler</Button>
-        </div>
+        </DialogActions>
       </div>
     </Modal>
   );
@@ -707,19 +897,22 @@ function WipeDialog() {
   const wipe = useFreev((s) => s.wipe);
   const open = useFreev((s) => s.open);
   return (
-    <Modal title="Supprimer mes données" lede="Le journal, les objectifs, les dettes et les factures de cet appareil seront vidés. Les comptes restent.">
-      <div className="flex gap-2">
+    <Modal
+      title="Supprimer mes données"
+      kicker="Données"
+      lede="Le journal, les objectifs, les dettes et les factures de cet appareil seront vidés. Les comptes restent."
+    >
+      <DialogActions>
+        <Button onClick={() => open(null)}>Annuler</Button>
         <Button
           variant="primary"
           onClick={() => {
             wipe();
-            toast("Données locales effacées");
           }}
         >
           Effacer
         </Button>
-        <Button onClick={() => open(null)}>Annuler</Button>
-      </div>
+      </DialogActions>
     </Modal>
   );
 }

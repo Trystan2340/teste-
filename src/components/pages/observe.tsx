@@ -3,6 +3,7 @@ import { fr } from "date-fns/locale";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Check, Clock, Flame, Repeat, TrendingUp } from "lucide-react";
 import { FlowChart, SplitChart } from "@/components/charts";
 import { Amount, Button, PageHead, Stat } from "@/components/ui";
 import { flows, spentByCategory } from "@/lib/freev/calc";
@@ -16,10 +17,15 @@ export function Dashboard() {
   const txs = useFreev((s) => s.txs);
   const accounts = useFreev((s) => s.accounts);
   const open = useFreev((s) => s.open);
+  const activeId = useFreev((s) => s.activeAccountId);
+  const setActive = useFreev((s) => s.setActiveAccount);
   const flow = flows(txs, mode, month);
   const visible = accounts.filter((a) => inScope(a.scope, mode));
   const balance = visible.reduce((s, a) => s + a.balance, 0);
-  const recent = [...txs].filter((t) => inScope(t.scope, mode) && t.date.startsWith(month)).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const recent = [...txs]
+    .filter((t) => inScope(t.scope, mode) && t.date.startsWith(month))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 6);
   const split = spentByCategory(txs, mode, month);
   const snap = SNAP[mode];
   const monthName = format(parseISO(`${month}-01`), "MMMM", { locale: fr });
@@ -35,7 +41,10 @@ export function Dashboard() {
         lede="Le mois en cours, les échéances encore devant, et ce qui a déjà bougé."
         actions={
           <>
-            <Link to="/rapport" className="inline-flex h-10 items-center rounded-full border border-rule bg-card px-4 text-sm shadow-float hover:border-copper/30 hover:text-copper">
+            <Link
+              to="/rapport"
+              className="inline-flex h-10 items-center rounded-full border border-rule bg-card px-4 text-sm shadow-float hover:border-copper/30 hover:text-copper"
+            >
               Rapport
             </Link>
             <Button variant="primary" onClick={() => open({ name: "tx" })}>
@@ -49,7 +58,11 @@ export function Dashboard() {
         <div className="lg:col-span-5">
           <p className="text-xs font-medium tracking-wide text-mist">Solde {scopeLabel}</p>
           <p className="mt-2 font-serif text-5xl tabular-nums tracking-tight">{money(balance)}</p>
-          <p className="mt-2 text-sm text-sage">{pct(snap.delta)} vs mois dernier</p>
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sage/12 px-2.5 py-1 text-sm text-sage">
+            <TrendingUp className="size-3.5" strokeWidth={2} />
+            {pct(snap.delta)}
+            <span className="text-mist">vs mois dernier</span>
+          </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3 lg:col-span-7">
           <MiniStat label="Entrées" value={money(flow.inn)} note="Mois en cours" tone="sage" />
@@ -68,13 +81,31 @@ export function Dashboard() {
                 return (
                   <li key={item.id} className="flex items-center justify-between gap-3 py-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <span className={cn("inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium tabular-nums", passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper")}>
+                      <span
+                        className={cn(
+                          "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium tabular-nums",
+                          passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
+                        )}
+                      >
                         {item.day}
                       </span>
                       <span className="min-w-0">
                         <p className="truncate text-sm">{item.label}</p>
                         <p className="text-xs text-mist">
-                          {monthName} · {passed ? "passé" : "à venir"}
+                          {monthName}
+                          <span
+                            className={cn(
+                              "ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px]",
+                              passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
+                            )}
+                          >
+                            {passed ? (
+                              <Check className="size-2.5" strokeWidth={3} />
+                            ) : (
+                              <Clock className="size-2.5" />
+                            )}
+                            {passed ? "passé" : "à venir"}
+                          </span>
                         </p>
                       </span>
                     </div>
@@ -92,7 +123,9 @@ export function Dashboard() {
               </Link>
             </div>
             <ul className="mt-3 divide-y divide-rule">
-              {recent.length === 0 ? <li className="py-6 text-sm text-mist">Aucune opération ce mois.</li> : null}
+              {recent.length === 0 ? (
+                <li className="py-6 text-sm text-mist">Aucune opération ce mois.</li>
+              ) : null}
               {recent.map((t) => (
                 <li key={t.id} className="flex items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
@@ -111,28 +144,60 @@ export function Dashboard() {
           <div className="chrome-pill rounded-3xl bg-card p-5">
             <p className="text-xs font-medium tracking-wide text-mist">Santé du mois</p>
             <p className="mt-1 font-serif text-6xl tabular-nums tracking-tight">{snap.health}</p>
-            <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">Stable. Une charge d’énergie sort du rang, le reste suit le budget.</p>
+            <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">
+              Stable. Une charge d’énergie sort du rang, le reste suit le budget.
+            </p>
           </div>
           <div className="chrome-pill rounded-3xl bg-card p-5">
             <div className="flex items-end justify-between gap-3">
               <h2 className="font-serif text-2xl tracking-tight">Comptes</h2>
               <div className="flex gap-3">
-                <button type="button" className="text-sm text-copper" onClick={() => open({ name: "pick-account" })}>
+                <button
+                  type="button"
+                  className="text-sm text-copper"
+                  onClick={() => open({ name: "pick-account" })}
+                >
                   Choisir
                 </button>
-                <button type="button" className="text-sm text-copper" onClick={() => open({ name: "accounts" })}>
+                <button
+                  type="button"
+                  className="text-sm text-copper"
+                  onClick={() => open({ name: "accounts" })}
+                >
                   Gérer
                 </button>
               </div>
             </div>
-            <ul className="mt-3 divide-y divide-rule">
+            <ul className="mt-3 space-y-1">
               {visible.map((a) => (
-                <li key={a.id} className="flex items-center justify-between gap-3 py-3">
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm">{a.name}</span>
-                    <span className="text-xs text-mist">{a.bank}</span>
-                  </span>
-                  <span className="shrink-0 tabular-nums">{money(a.balance)}</span>
+                <li key={a.id}>
+                  <button
+                    type="button"
+                    onClick={() => setActive(a.id)}
+                    title={a.id === activeId ? "Compte actif" : "Utiliser ce compte"}
+                    className={cn(
+                      "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors",
+                      a.id === activeId ? "bg-card-2/80" : "hover:bg-card-2/50",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold tracking-tight",
+                        a.kind === "pro"
+                          ? "bg-copper/12 text-copper"
+                          : a.kind === "epargne"
+                            ? "bg-sage/15 text-sage"
+                            : "bg-teal/15 text-teal",
+                      )}
+                    >
+                      {a.bank.slice(0, 2).toUpperCase()}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm">{a.name}</span>
+                      <span className="text-xs text-mist">{a.bank}</span>
+                    </span>
+                    <span className="shrink-0 text-sm tabular-nums">{money(a.balance)}</span>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -140,22 +205,39 @@ export function Dashboard() {
           <div className="chrome-pill rounded-3xl bg-card p-5">
             <h2 className="font-serif text-2xl tracking-tight">Répartition des sorties</h2>
             <SplitChart data={split} />
-            <ul className="space-y-2">
-              {split.slice(0, 5).map((c) => (
-                <li key={c.name} className="flex justify-between gap-3 text-sm">
-                  <span className="truncate">{c.name}</span>
-                  <span className="shrink-0 tabular-nums text-mist">{money(c.value)}</span>
-                </li>
-              ))}
-            </ul>
           </div>
           <div className="rounded-3xl bg-copper/8 p-5 ring-1 ring-copper/15">
-            <p className="text-xs font-medium tracking-wide text-copper">Alertes</p>
-            <p className="mt-2 text-sm">EDF a augmenté de 18 % par rapport à la moyenne.</p>
-            <p className="mt-2 text-sm">2 abonnements se renouvellent cette semaine.</p>
-            <Link to="/analytique" className="mt-3 inline-block text-sm text-copper">
-              Voir l’analytique
-            </Link>
+            <p className="text-xs font-medium tracking-wide text-copper">À surveiller</p>
+            <ul className="mt-3 space-y-2">
+              <li>
+                <Link
+                  to="/analytique"
+                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors hover:bg-copper/10"
+                >
+                  <Flame className="mt-0.5 size-4 shrink-0 text-clay" strokeWidth={1.8} />
+                  <span className="text-sm">
+                    EDF a augmenté de 18 % par rapport à la moyenne.
+                    <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
+                      Voir l’analytique →
+                    </span>
+                  </span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/abonnements"
+                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors hover:bg-copper/10"
+                >
+                  <Repeat className="mt-0.5 size-4 shrink-0 text-copper" strokeWidth={1.8} />
+                  <span className="text-sm">
+                    2 abonnements se renouvellent cette semaine.
+                    <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
+                      Gérer les abonnements →
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
       </section>
@@ -164,11 +246,29 @@ export function Dashboard() {
   );
 }
 
-function MiniStat({ label, value, note, tone }: { label: string; value: string; note: string; tone?: "sage" | "clay" }) {
+function MiniStat({
+  label,
+  value,
+  note,
+  tone,
+}: {
+  label: string;
+  value: string;
+  note: string;
+  tone?: "sage" | "clay";
+}) {
   return (
     <div className="rounded-2xl bg-card-2 px-4 py-4">
       <p className="text-xs font-medium tracking-wide text-mist">{label}</p>
-      <p className={cn("mt-1 font-serif text-2xl tabular-nums tracking-tight", tone === "sage" && "text-sage", tone === "clay" && "text-clay")}>{value}</p>
+      <p
+        className={cn(
+          "mt-1 font-serif text-2xl tabular-nums tracking-tight",
+          tone === "sage" && "text-sage",
+          tone === "clay" && "text-clay",
+        )}
+      >
+        {value}
+      </p>
       <p className="mt-1 text-xs text-mist">{note}</p>
     </div>
   );
@@ -191,24 +291,39 @@ export function Analytics() {
         title="Ce que le mois raconte"
         lede="Entrées, sorties, et les catégories qui pèsent — sur la période choisie."
         actions={
-          <label className="text-xs uppercase tracking-widest text-mist">
-            Période
-            <select
-              value={span}
-              onChange={(e) => setSpan(Number(e.target.value))}
-              className="ml-2 h-11 border border-rule bg-transparent px-2 text-ink"
-            >
-              <option value={3}>3 mois</option>
-              <option value={6}>6 mois</option>
-            </select>
-          </label>
+          <div
+            className="flex gap-1 rounded-full bg-card-2 p-1"
+            role="tablist"
+            aria-label="Période"
+          >
+            {[3, 6].map((n) => (
+              <button
+                key={n}
+                type="button"
+                role="tab"
+                aria-selected={span === n}
+                onClick={() => setSpan(n)}
+                className={
+                  span === n
+                    ? "h-9 rounded-full bg-copper px-4 text-sm font-medium text-copper-ink shadow-float"
+                    : "h-9 rounded-full px-4 text-sm text-mist transition-colors hover:text-ink"
+                }
+              >
+                {n} mois
+              </button>
+            ))}
+          </div>
         }
       />
       <section className="grid border-y border-rule sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Entrées" value={money(flow.inn)} note={pct(6.4)} tone="sage" />
         <Stat label="Sorties" value={money(flow.out)} note={pct(-2.1)} tone="sage" />
         <Stat label="Épargne nette" value={money(flow.rest)} note="Novembre" />
-        <Stat label="Taux d’épargne" value={`${rate.toFixed(1).replace(".", ",")} %`} note="Du mois" />
+        <Stat
+          label="Taux d’épargne"
+          value={`${rate.toFixed(1).replace(".", ",")} %`}
+          note="Du mois"
+        />
       </section>
       <section>
         <h2 className="font-serif text-2xl">Flux mensuel</h2>
@@ -282,54 +397,103 @@ export function Business() {
           </Button>
         }
       />
-      <section className="grid border-y border-rule sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="CA du mois" value={money(8640)} note="Facturé" />
-        <Stat label="Charges" value={money(3120)} note="Estimées" tone="clay" />
-        <Stat label="Résultat" value={money(5520)} note="Avant impôt" tone="sage" />
-        <Stat label="Trésorerie" value={money(12480)} note={pro ? `dont Qonto ${money(pro.balance)}` : ""} />
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "CA du mois", value: money(8640), note: "Facturé", tone: "" },
+          { label: "Charges", value: money(3120), note: "Estimées", tone: "text-clay" },
+          { label: "Résultat", value: money(5520), note: "Avant impôt", tone: "text-sage" },
+          {
+            label: "Trésorerie",
+            value: money(12480),
+            note: pro ? `dont Qonto ${money(pro.balance)}` : "",
+            tone: "",
+          },
+        ].map((k) => (
+          <div key={k.label} className="rounded-2xl border border-rule bg-card/70 p-4">
+            <p className="text-xs font-medium tracking-wide text-mist">{k.label}</p>
+            <p className={cn("mt-1 font-serif text-3xl tabular-nums tracking-tight", k.tone)}>
+              {k.value}
+            </p>
+            {k.note ? <p className="mt-1 text-xs text-mist">{k.note}</p> : null}
+          </div>
+        ))}
       </section>
-      <section className="grid gap-10 lg:grid-cols-2">
-        <div>
-          <h2 className="font-serif text-2xl">Clients</h2>
-          <ul className="mt-4 divide-y divide-rule border-y border-rule">
-            {[
-              ["Atelier Nord", "AN", "Payée · 2 400 €"],
-              ["Studio Lina", "SL", waiting.some((i) => i.client === "Studio Lina") ? "En attente · 1 800 €" : "Payée · 1 800 €"],
-              ["Maison Brume", "MB", "Payée · 960 €"],
-            ].map(([name, mark, last]) => (
-              <li key={name} className="flex items-center gap-3 py-3">
-                <span className="inline-flex size-10 items-center justify-center border border-rule font-serif text-sm">{mark}</span>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <div className="chrome-pill rounded-3xl bg-card p-5">
+          <h2 className="font-serif text-2xl tracking-tight">Clients</h2>
+          <ul className="mt-3 space-y-1">
+            {(
+              [
+                ["Atelier Nord", "AN", "Payée · 2 400 €", true],
+                [
+                  "Studio Lina",
+                  "SL",
+                  waiting.some((i) => i.client === "Studio Lina")
+                    ? "En attente · 1 800 €"
+                    : "Payée · 1 800 €",
+                  !waiting.some((i) => i.client === "Studio Lina"),
+                ],
+                ["Maison Brume", "MB", "Payée · 960 €", true],
+              ] as [string, string, string, boolean][]
+            ).map(([name, mark, last, ok]) => (
+              <li
+                key={name}
+                className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-card-2/50"
+              >
+                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal/12 text-xs font-semibold text-teal">
+                  {mark}
+                </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm">{name}</span>
+                  <span className="block truncate text-sm">{name}</span>
                   <span className="text-xs text-mist">{last}</span>
+                </span>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-1 text-[11px] font-medium",
+                    ok ? "bg-sage/15 text-sage" : "bg-copper/12 text-copper",
+                  )}
+                >
+                  {ok ? "à jour" : "relance"}
                 </span>
               </li>
             ))}
           </ul>
         </div>
-        <div>
-          <h2 className="font-serif text-2xl">Factures</h2>
-          <ul className="mt-4 divide-y divide-rule border-y border-rule">
-            {invoices.map((inv) => (
-              <li key={inv.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="text-sm">
-                    {inv.number} · {inv.client}
-                  </p>
-                  <p className="text-xs uppercase tracking-widest text-mist">
-                    {dayLabel(inv.date)} · {inv.status}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="tabular-nums">{money(inv.amount)}</span>
-                  {inv.status !== "payée" ? (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          toast(useFreev.getState().remind(inv.id));
-                        }}
+
+        <div className="chrome-pill rounded-3xl bg-card p-5">
+          <h2 className="font-serif text-2xl tracking-tight">Factures</h2>
+          <ul className="mt-3 divide-y divide-rule">
+            {invoices.map((inv) => {
+              const paid = inv.status === "payée";
+              return (
+                <li key={inv.id} className="py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm">
+                        <span className="text-mist">{inv.number}</span> · {inv.client}
+                      </p>
+                      <p className="mt-0.5 text-xs text-mist">{dayLabel(inv.date)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm tabular-nums">{money(inv.amount)}</p>
+                      <span
+                        className={cn(
+                          "mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium",
+                          paid
+                            ? "bg-sage/15 text-sage"
+                            : inv.status === "en retard"
+                              ? "bg-clay/15 text-clay"
+                              : "bg-copper/12 text-copper",
+                        )}
                       >
+                        {inv.status}
+                      </span>
+                    </div>
+                  </div>
+                  {!paid ? (
+                    <div className="mt-2 flex gap-2">
+                      <Button size="sm" onClick={() => toast(useFreev.getState().remind(inv.id))}>
                         Relancer
                       </Button>
                       <Button
@@ -340,13 +504,13 @@ export function Business() {
                           toast("Facture marquée payée");
                         }}
                       >
-                        Payée
+                        Marquer payée
                       </Button>
-                    </>
+                    </div>
                   ) : null}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>
@@ -371,7 +535,13 @@ export function Report() {
             variant="primary"
             onClick={() => {
               const blob = new Blob(
-                [JSON.stringify({ mois: "2026-11", entrees: flow.inn, sorties: flow.out, categories: split }, null, 2)],
+                [
+                  JSON.stringify(
+                    { mois: "2026-11", entrees: flow.inn, sorties: flow.out, categories: split },
+                    null,
+                    2,
+                  ),
+                ],
                 { type: "application/json" },
               );
               const url = URL.createObjectURL(blob);
@@ -391,7 +561,8 @@ export function Report() {
         <p className="text-xs uppercase tracking-widest text-copper">FREEV · Camille Morel</p>
         <h2 className="mt-3 font-serif text-4xl">Livre de novembre</h2>
         <p className="mt-4 max-w-2xl text-sm text-mist">
-          Les entrées du mois s’établissent à {money(flow.inn)}, les sorties à {money(flow.out)}. Le reste à vivre est de {money(flow.rest)}. La santé du mois reste à {SNAP[mode].health}.
+          Les entrées du mois s’établissent à {money(flow.inn)}, les sorties à {money(flow.out)}. Le
+          reste à vivre est de {money(flow.rest)}. La santé du mois reste à {SNAP[mode].health}.
         </p>
         <dl className="mt-8 grid gap-4 sm:grid-cols-3">
           <div>
