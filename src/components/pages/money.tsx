@@ -148,7 +148,7 @@ export function Transactions() {
               {rows.map((t) => (
                 <tr
                   key={t.id}
-                  className="group/row border-t border-rule transition-colors hover:bg-card/50"
+                  className="group/row border-t border-rule transition-colors hover:bg-card/50 [&>td]:py-3"
                 >
                   <td className="py-3 whitespace-nowrap">{dayLabel(t.date)}</td>
                   <td className="py-3">
@@ -166,7 +166,7 @@ export function Transactions() {
                   <td className="py-3 text-right">
                     <Amount value={t.amount} kind={t.kind} />
                   </td>
-                  <td className="py-3 pl-4">
+                  <td className="pl-4">
                     <div className="flex justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:focus-within:opacity-100">
                       <button
                         type="button"

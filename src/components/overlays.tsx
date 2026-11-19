@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { Button, Field, Select, Toggle } from "@/components/ui";
 import { CATEGORIES, LOGOS, SCHEDULE, TODAY, type Scope, type TxKind } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
-import { uid } from "@/lib/utils";
+import { cn, money, uid } from "@/lib/utils";
 
 export function Overlays() {
   const dialog = useFreev((s) => s.dialog);
@@ -677,6 +677,7 @@ function PickAccountDialog() {
   const accounts = useFreev((s) => s.accounts);
   const active = useFreev((s) => s.activeAccountId);
   const setActive = useFreev((s) => s.setActiveAccount);
+  const open = useFreev((s) => s.open);
   const [id, setId] = useState(active);
   return (
     <Modal
@@ -685,27 +686,58 @@ function PickAccountDialog() {
       lede="Le compte actif sert de défaut pour les nouvelles opérations."
     >
       <div className="space-y-2">
-        {accounts.map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => setId(a.id)}
-            className={
-              id === a.id
-                ? "flex w-full items-center justify-between border border-copper px-3 py-3 text-left"
-                : "flex w-full items-center justify-between border border-rule px-3 py-3 text-left"
-            }
-          >
-            <span>
-              <span className="block text-sm">{a.name}</span>
-              <span className="text-xs text-mist">{a.bank}</span>
-            </span>
-            <span className="text-xs uppercase tracking-widest">{a.scope}</span>
-          </button>
-        ))}
-        <Button variant="primary" className="mt-3" onClick={() => setActive(id)}>
-          Utiliser ce compte
-        </Button>
+        {accounts.map((a) => {
+          const on = id === a.id;
+          return (
+            <button
+              key={a.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => setId(a.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors",
+                on
+                  ? "border-copper/50 bg-copper/8 ring-1 ring-copper/25"
+                  : "border-rule bg-card hover:border-copper/25",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold",
+                  a.kind === "pro"
+                    ? "bg-copper/12 text-copper"
+                    : a.kind === "epargne"
+                      ? "bg-sage/15 text-sage"
+                      : "bg-teal/15 text-teal",
+                )}
+              >
+                {a.bank.slice(0, 2).toUpperCase()}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm">{a.name}</span>
+                <span className="text-xs text-mist">
+                  {a.bank} · {a.scope === "pro" ? "professionnel" : "personnel"}
+                </span>
+              </span>
+              <span className="text-sm tabular-nums text-mist">{money(a.balance)}</span>
+              <span
+                className={cn(
+                  "inline-flex size-5 shrink-0 items-center justify-center rounded-full border",
+                  on ? "border-copper bg-copper text-copper-ink" : "border-rule",
+                )}
+              >
+                {on ? <Check className="size-3" strokeWidth={3} /> : null}
+              </span>
+            </button>
+          );
+        })}
+        <DialogActions>
+          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button variant="primary" onClick={() => setActive(id)}>
+            Utiliser ce compte
+          </Button>
+        </DialogActions>
       </div>
     </Modal>
   );
