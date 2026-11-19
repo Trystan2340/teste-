@@ -3,6 +3,7 @@ import { fr } from "date-fns/locale";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Amount, Button, PageHead } from "@/components/ui";
+import { useConfirmAction } from "@/components/confirm";
 import { SCHEDULE } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
 import { money } from "@/lib/utils";
@@ -17,7 +18,10 @@ export function Planner() {
   const lead = (getDay(startOfMonth(cursor)) + 6) % 7;
   const showSchedule = key === "2026-11" || duplicated.includes(key);
   const balance = accounts.reduce((s, a) => s + a.balance, 0);
-  const ahead = SCHEDULE.filter((s) => key !== "2026-11" || s.day >= 19).reduce((s, item) => s + item.amount, 0);
+  const ahead = SCHEDULE.filter((s) => key !== "2026-11" || s.day >= 19).reduce(
+    (s, item) => s + item.amount,
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -43,8 +47,13 @@ export function Planner() {
           >
             Mois précédent
           </Button>
-          <p className="min-w-40 text-center font-serif text-2xl capitalize">{format(cursor, "MMMM yyyy", { locale: fr })}</p>
-          <Button size="sm" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>
+          <p className="min-w-40 text-center font-serif text-2xl capitalize">
+            {format(cursor, "MMMM yyyy", { locale: fr })}
+          </p>
+          <Button
+            size="sm"
+            onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+          >
             Mois suivant
           </Button>
         </div>
@@ -77,7 +86,13 @@ export function Planner() {
                   onClick={() => open({ name: "tx", date: format(d, "yyyy-MM-dd") })}
                   className="min-h-16 border-r border-b border-rule p-1 text-left hover:bg-card-2"
                 >
-                  <span className={today ? "inline-flex size-6 items-center justify-center bg-copper text-xs text-copper-ink" : "text-xs text-mist"}>
+                  <span
+                    className={
+                      today
+                        ? "inline-flex size-6 items-center justify-center bg-copper text-xs text-copper-ink"
+                        : "text-xs text-mist"
+                    }
+                  >
                     {dom}
                   </span>
                   {marks.map((m) => (
@@ -98,14 +113,18 @@ export function Planner() {
                 <li key={s.id} className="flex items-center justify-between py-3">
                   <span>
                     <span className="block text-sm">{s.label}</span>
-                    <span className="text-xs uppercase tracking-widest text-mist">Jour {s.day}</span>
+                    <span className="text-xs uppercase tracking-widest text-mist">
+                      Jour {s.day}
+                    </span>
                   </span>
                   <Amount value={s.amount} />
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-4 text-sm text-mist">Aucune échéance posée sur ce mois. Dupliquez novembre pour les reprendre.</p>
+            <p className="mt-4 text-sm text-mist">
+              Aucune échéance posée sur ce mois. Dupliquez novembre pour les reprendre.
+            </p>
           )}
           <div className="mt-6 flex flex-wrap gap-2">
             <Button size="sm" onClick={() => open({ name: "opening" })}>
@@ -154,22 +173,41 @@ export function Smart() {
       <section className="grid gap-8 lg:grid-cols-2">
         <div className="border-l-2 border-copper pl-4">
           <p className="text-xs uppercase tracking-widest text-copper">Suggestion</p>
-          <p className="mt-2 text-sm">Les abonnements pèsent sur le mois. Mettre Spotify en pause libère 11 € sans toucher au loyer.</p>
-          <p className="mt-2 text-sm">Un virement automatique de 200 € reste possible le 30, après le salaire.</p>
+          <p className="mt-2 text-sm">
+            Les abonnements pèsent sur le mois. Mettre Spotify en pause libère 11 € sans toucher au
+            loyer.
+          </p>
+          <p className="mt-2 text-sm">
+            Un virement automatique de 200 € reste possible le 30, après le salaire.
+          </p>
         </div>
         <form
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
             if (!name.trim()) return;
-            add({ name: name.trim(), detail: "Plan créé à la main", amount: Number(amount) || 0, status: "actif" });
+            add({
+              name: name.trim(),
+              detail: "Plan créé à la main",
+              amount: Number(amount) || 0,
+              status: "actif",
+            });
             setName("");
             toast("Plan ajouté");
           }}
         >
           <p className="text-xs uppercase tracking-widest text-mist">Nouveau plan</p>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom" className="w-full border-b border-rule bg-transparent py-2 text-sm outline-none" />
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} className="w-full border-b border-rule bg-transparent py-2 text-sm outline-none" />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nom"
+            className="w-full border-b border-rule bg-transparent py-2 text-sm outline-none"
+          />
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="w-full border-b border-rule bg-transparent py-2 text-sm outline-none"
+          />
           <Button type="submit" variant="primary">
             Créer le plan
           </Button>
@@ -183,6 +221,7 @@ export function Savings() {
   const goals = useFreev((s) => s.goals);
   const open = useFreev((s) => s.open);
   const remove = useFreev((s) => s.removeGoal);
+  const confirm = useConfirmAction();
   const accounts = useFreev((s) => s.accounts);
   const names = useMemo(() => Object.fromEntries(accounts.map((a) => [a.id, a.name])), [accounts]);
   return (
@@ -220,7 +259,15 @@ export function Savings() {
                 <Button size="sm" onClick={() => open({ name: "goal", id: g.id })}>
                   Ajuster
                 </Button>
-                <Button size="sm" onClick={() => remove(g.id)}>
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    confirm(
+                      { title: `Retirer l’objectif « ${g.name} » ?`, confirmLabel: "Retirer" },
+                      () => remove(g.id),
+                    )
+                  }
+                >
                   Retirer
                 </Button>
               </div>

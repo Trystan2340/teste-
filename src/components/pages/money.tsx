@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router";
+import { Pencil, ScanLine, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Amount, Button, Empty, PageHead } from "@/components/ui";
+import { useConfirmAction } from "@/components/confirm";
 import { FlowChart } from "@/components/charts";
 import { HISTORY, SERIES, inScope, type TxKind } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
@@ -12,12 +14,16 @@ export function Transactions() {
   const mode = useFreev((s) => s.mode);
   const month = useFreev((s) => s.month);
   const open = useFreev((s) => s.open);
+  const remove = useFreev((s) => s.removeTx);
+  const confirm = useConfirmAction();
   const [q, setQ] = useState("");
   const [cat, setCat] = useState("toutes");
+  const catOptions = useMemo(() => ["toutes", ...new Set(txs.map((t) => t.category))], [txs]);
+  // Category options must survive the category filter, otherwise picking one
+  // leaves that category as the only choice left in the list.
   const [account, setAccount] = useState("tous");
   const [kind, setKind] = useState<"tous" | TxKind>("tous");
 
-  const cats = useMemo(() => ["toutes", ...new Set(txs.map((t) => t.category))], [txs]);
   const rows = txs
     .filter((t) => inScope(t.scope, mode))
     .filter((t) => t.date.startsWith(month))
@@ -36,7 +42,11 @@ export function Transactions() {
         lede="Le journal filtré selon le périmètre choisi en haut de page."
         actions={
           <>
-            <Link to="/scanner" className="inline-flex h-11 items-center border border-rule px-4 text-xs uppercase tracking-widest">
+            <Link
+              to="/scanner"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-rule bg-card px-4 text-sm font-medium text-ink shadow-float transition-colors hover:border-copper/30 hover:text-copper active:scale-[0.98]"
+            >
+              <ScanLine className="size-4" strokeWidth={1.8} />
               Scanner
             </Link>
             <Button variant="primary" onClick={() => open({ name: "tx" })}>
@@ -45,45 +55,80 @@ export function Transactions() {
           </>
         }
       />
-      <div className="grid gap-3 border-y border-rule py-4 md:grid-cols-4">
-        <label className="block">
-          <span className="text-xs uppercase tracking-widest text-mist">Recherche</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 text-sm outline-none" placeholder="Libellé" />
+      <div className="grid gap-2 rounded-2xl border border-rule bg-card/60 p-2 md:grid-cols-[1.4fr_1fr_1fr_1fr_auto]">
+        <label className="relative block">
+          <span className="sr-only">Rechercher un libellé</span>
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-mist" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="h-10 w-full rounded-full border border-transparent bg-card-2/70 pr-3 pl-9 text-sm text-ink outline-none transition-colors placeholder:text-mist focus:border-copper/40"
+            placeholder="Rechercher un libellé…"
+          />
         </label>
+        {[
+          { label: "Catégorie", value: cat, set: setCat, options: catOptions },
+          {
+            label: "Compte",
+            value: account,
+            set: setAccount,
+            options: ["tous", ...accounts.map((a) => a.id)],
+          },
+        ].map((f) => (
+          <label key={f.label} className="block">
+            <span className="sr-only">{f.label}</span>
+            <select
+              value={f.value}
+              onChange={(e) => f.set(e.target.value)}
+              className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+            >
+              {f.options.map((o) => (
+                <option key={o} value={o}>
+                  {f.label === "Compte"
+                    ? o === "tous"
+                      ? "tous les comptes"
+                      : (accounts.find((a) => a.id === o)?.name ?? o)
+                    : o}
+                </option>
+              ))}
+            </select>
+          </label>
+        ))}
         <label className="block">
-          <span className="text-xs uppercase tracking-widest text-mist">Catégorie</span>
-          <select value={cat} onChange={(e) => setCat(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 text-sm">
-            {cats.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-xs uppercase tracking-widest text-mist">Compte</span>
-          <select value={account} onChange={(e) => setAccount(e.target.value)} className="mt-1 w-full border-b border-rule bg-transparent py-2 text-sm">
-            <option value="tous">tous</option>
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-xs uppercase tracking-widest text-mist">Type</span>
-          <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className="mt-1 w-full border-b border-rule bg-transparent py-2 text-sm">
-            <option value="tous">tous</option>
+          <span className="sr-only">Type</span>
+          <select
+            value={kind}
+            onChange={(e) => setKind(e.target.value as typeof kind)}
+            className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+          >
+            <option value="tous">tous les types</option>
             <option value="expense">dépense</option>
             <option value="income">revenu</option>
             <option value="transfer">virement</option>
           </select>
         </label>
+        <Button
+          variant="quiet"
+          className="h-10 px-3"
+          onClick={() => {
+            setQ("");
+            setCat("toutes");
+            setAccount("tous");
+            setKind("tous");
+          }}
+          disabled={!q && cat === "toutes" && account === "tous" && kind === "tous"}
+        >
+          Réinitialiser
+        </Button>
       </div>
       <p className="text-sm text-mist">
         {rows.length} ligne{rows.length > 1 ? "s" : ""} · sous-total {money(sum)}
       </p>
       {rows.length === 0 ? (
-        <Empty title="Journal vide" body="Aucune opération ne correspond. Élargissez les filtres ou ajoutez une ligne." />
+        <Empty
+          title="Journal vide"
+          body="Aucune opération ne correspond. Élargissez les filtres ou ajoutez une ligne."
+        />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] text-left text-sm">
@@ -94,20 +139,62 @@ export function Transactions() {
                 <th className="py-2 font-medium">Catégorie</th>
                 <th className="py-2 font-medium">Compte</th>
                 <th className="py-2 text-right font-medium">Montant</th>
+                <th className="py-2">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((t) => (
-                <tr key={t.id} className="border-t border-rule">
+                <tr
+                  key={t.id}
+                  className="group/row border-t border-rule transition-colors hover:bg-card/50"
+                >
                   <td className="py-3 whitespace-nowrap">{dayLabel(t.date)}</td>
                   <td className="py-3">
                     {t.label}
-                    {t.pending ? <span className="ml-2 text-xs uppercase tracking-widest text-copper">prévu</span> : null}
+                    {t.pending ? (
+                      <span className="ml-2 text-xs uppercase tracking-widest text-copper">
+                        prévu
+                      </span>
+                    ) : null}
                   </td>
                   <td className="py-3 text-mist">{t.category}</td>
-                  <td className="py-3 text-mist">{accounts.find((a) => a.id === t.accountId)?.name}</td>
+                  <td className="py-3 text-mist">
+                    {accounts.find((a) => a.id === t.accountId)?.name}
+                  </td>
                   <td className="py-3 text-right">
                     <Amount value={t.amount} kind={t.kind} />
+                  </td>
+                  <td className="py-3 pl-4">
+                    <div className="flex justify-end gap-1 opacity-100 transition-opacity sm:opacity-0 sm:group-hover/row:opacity-100 sm:focus-within:opacity-100">
+                      <button
+                        type="button"
+                        aria-label={`Modifier ${t.label}`}
+                        title="Modifier"
+                        onClick={() => open({ name: "tx", editId: t.id })}
+                        className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-card-2 hover:text-copper"
+                      >
+                        <Pencil className="size-4" strokeWidth={1.7} />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Supprimer ${t.label}`}
+                        title="Supprimer"
+                        onClick={() =>
+                          confirm(
+                            {
+                              title: `Supprimer « ${t.label} » ?`,
+                              description: "Le solde du compte sera recalculé.",
+                            },
+                            () => remove(t.id),
+                          )
+                        }
+                        className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-rose/12 hover:text-rose"
+                      >
+                        <Trash2 className="size-4" strokeWidth={1.7} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -123,6 +210,7 @@ export function Recurring() {
   const txs = useFreev((s) => s.txs);
   const open = useFreev((s) => s.open);
   const remove = useFreev((s) => s.removeTx);
+  const confirm = useConfirmAction();
   const rows = txs.filter((t) => t.recurring);
   const out = rows.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
   const inn = rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
@@ -147,7 +235,8 @@ export function Recurring() {
             <div>
               <p className="text-sm">{t.label}</p>
               <p className="text-xs uppercase tracking-widest text-mist">
-                {t.category} · jour {Number(t.date.slice(8, 10))} · {t.scope === "pro" ? "pro" : "perso"}
+                {t.category} · jour {Number(t.date.slice(8, 10))} ·{" "}
+                {t.scope === "pro" ? "pro" : "perso"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -155,7 +244,19 @@ export function Recurring() {
               <Button size="sm" onClick={() => open({ name: "recurrence", id: t.id })}>
                 Modifier
               </Button>
-              <Button size="sm" onClick={() => remove(t.id)}>
+              <Button
+                size="sm"
+                onClick={() =>
+                  confirm(
+                    {
+                      title: `Retirer la récurrence « ${t.label} » ?`,
+                      description: "Les opérations déjà passées ne bougent pas.",
+                      confirmLabel: "Retirer",
+                    },
+                    () => remove(t.id),
+                  )
+                }
+              >
                 Retirer
               </Button>
             </div>
@@ -181,7 +282,11 @@ export function HistoryPage() {
         <ul className="divide-y divide-rule border-y border-rule lg:col-span-5">
           {HISTORY.map((h) => (
             <li key={h.id}>
-              <button type="button" onClick={() => setId(h.id)} className="flex w-full items-center justify-between py-3 text-left">
+              <button
+                type="button"
+                onClick={() => setId(h.id)}
+                className="flex w-full items-center justify-between py-3 text-left"
+              >
                 <span className={h.id === id ? "text-ink" : "text-mist"}>{h.label}</span>
                 <span className="tabular-nums text-sm">{money(h.inn - h.out)}</span>
               </button>
@@ -205,11 +310,17 @@ export function HistoryPage() {
             </div>
           </dl>
           {current.id === "2026-11" ? (
-            <Link to="/transactions" className="mt-6 inline-block text-xs uppercase tracking-widest text-copper">
+            <Link
+              to="/transactions"
+              className="mt-6 inline-block text-xs uppercase tracking-widest text-copper"
+            >
               Ouvrir le journal de novembre
             </Link>
           ) : (
-            <p className="mt-6 text-sm text-mist">Le détail ligne à ligne est tenu pour novembre. Les mois précédents restent en agrégat.</p>
+            <p className="mt-6 text-sm text-mist">
+              Le détail ligne à ligne est tenu pour novembre. Les mois précédents restent en
+              agrégat.
+            </p>
           )}
         </div>
       </div>
