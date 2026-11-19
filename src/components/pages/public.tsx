@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 const LINKS = [
@@ -49,10 +50,12 @@ function Site({
         </section>
         <section className="grid border-b border-rule lg:grid-cols-3">
           {points.map((p, i) => (
-            <article key={p.t} className="border-b border-rule p-6 lg:border-r lg:border-b-0">
-              <p className="text-xs uppercase tracking-widest text-mist">0{i + 1}</p>
-              <h2 className="mt-3 font-serif text-2xl">{p.t}</h2>
-              <p className="mt-2 text-sm text-mist">{p.d}</p>
+            <article key={p.t} className="group p-6">
+              <span className="inline-flex size-8 items-center justify-center rounded-full bg-copper/10 text-xs font-medium text-copper">
+                0{i + 1}
+              </span>
+              <h2 className="mt-3 font-serif text-2xl tracking-tight">{p.t}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-mist">{p.d}</p>
             </article>
           ))}
         </section>
@@ -60,7 +63,7 @@ function Site({
           <h2 className="font-serif text-3xl lg:col-span-4">Tarifs</h2>
           <div className="grid gap-6 sm:grid-cols-3 lg:col-span-8">
             <Price name="Essai" price="0 €" note="14 jours, sans carte." />
-            <Price name="Personnel" price="6 €" note="Budget, récurrences, planner." />
+            <Price name="Personnel" price="6 €" note="Budget, récurrences, planner." highlight />
             <Price name="Professionnel" price="14 €" note="Factures, clients, trésorerie." />
           </div>
         </section>
@@ -94,11 +97,35 @@ function Site({
   );
 }
 
-function Price({ name, price, note }: { name: string; price: string; note: string }) {
+function Price({
+  name,
+  price,
+  note,
+  highlight,
+}: {
+  name: string;
+  price: string;
+  note: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="border-t border-copper pt-4">
-      <p className="text-xs uppercase tracking-widest text-mist">{name}</p>
-      <p className="mt-2 font-serif text-4xl">{price}</p>
+    <div
+      className={
+        highlight
+          ? "chrome-pill relative rounded-3xl bg-card p-5 ring-1 ring-copper/40"
+          : "rounded-3xl border border-rule p-5"
+      }
+    >
+      {highlight ? (
+        <span className="absolute -top-2.5 right-4 rounded-full bg-copper px-2 py-0.5 text-[11px] font-medium text-copper-ink">
+          le plus choisi
+        </span>
+      ) : null}
+      <p className="text-sm text-mist">{name}</p>
+      <p className="mt-1 font-serif text-4xl tracking-tight">
+        {price}
+        <span className="text-base text-mist"> / mois</span>
+      </p>
       <p className="mt-2 text-sm text-mist">{note}</p>
     </div>
   );
@@ -130,7 +157,13 @@ function Faq() {
               onClick={() => setOpen(i)}
             >
               <span>{q}</span>
-              <span className="text-copper">{open === i ? "–" : "+"}</span>
+              <ChevronDown
+                className={
+                  open === i
+                    ? "size-4 rotate-180 text-copper transition-transform"
+                    : "size-4 text-mist transition-transform"
+                }
+              />
             </button>
             {open === i ? <p className="pb-4 text-sm text-mist">{a}</p> : null}
           </li>

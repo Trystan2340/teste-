@@ -48,25 +48,30 @@ export function Login() {
       >
         <h1 className="font-serif text-4xl">Connexion</h1>
         <p className="mt-2 text-sm text-mist">Reprendre le livre là où vous l’avez laissé.</p>
+        <p className="mt-4 rounded-xl bg-copper/8 px-3 py-2 text-xs text-copper">
+          Démonstration : les identifiants sont déjà remplis, cliquez sur Entrer.
+        </p>
         <label className="mt-8 block">
-          <span className="text-xs uppercase tracking-widest text-mist">E-mail</span>
+          <span className="text-xs font-medium text-mist">E-mail</span>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+            autoComplete="email"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
           />
         </label>
         <label className="mt-4 block">
-          <span className="text-xs uppercase tracking-widest text-mist">Mot de passe</span>
+          <span className="text-xs font-medium text-mist">Mot de passe</span>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+            autoComplete="current-password"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
           />
         </label>
         {error ? <p className="mt-3 text-sm text-clay">{error}</p> : null}
-        <Button type="submit" variant="primary" className="mt-6">
+        <Button type="submit" variant="primary" className="h-11 w-full">
           Entrer
         </Button>
         <p className="mt-6 text-sm text-mist">
@@ -104,32 +109,32 @@ export function Signup() {
           Un compte, deux vies d’argent si vous le souhaitez.
         </p>
         <label className="mt-8 block">
-          <span className="text-xs uppercase tracking-widest text-mist">Nom</span>
+          <span className="text-xs font-medium text-mist">Nom</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
           />
         </label>
         <label className="mt-4 block">
-          <span className="text-xs uppercase tracking-widest text-mist">E-mail</span>
+          <span className="text-xs font-medium text-mist">E-mail</span>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
           />
         </label>
         <label className="mt-4 block">
-          <span className="text-xs uppercase tracking-widest text-mist">Mot de passe</span>
+          <span className="text-xs font-medium text-mist">Mot de passe</span>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+            className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
           />
         </label>
         {error ? <p className="mt-3 text-sm text-clay">{error}</p> : null}
-        <Button type="submit" variant="primary" className="mt-6">
+        <Button type="submit" variant="primary" className="h-11 w-full">
           Continuer
         </Button>
         <p className="mt-6 text-sm text-mist">
@@ -192,18 +197,18 @@ export function Configure() {
             <label className="block text-sm">
               Revenu mensuel estimé
               <input
-                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
                 defaultValue="3200"
               />
             </label>
             <label className="block text-sm">
               Loyer
               <input
-                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
                 defaultValue="890"
               />
             </label>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" className="h-11 w-full">
               Ouvrir le livre
             </Button>
           </form>
@@ -220,18 +225,18 @@ export function Configure() {
             <label className="block text-sm">
               Nom commercial
               <input
-                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
                 defaultValue="Camille Morel Studio"
               />
             </label>
             <label className="block text-sm">
               SIRET
               <input
-                className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
+                className="mt-1 h-11 w-full rounded-xl border border-rule bg-card px-3 text-sm outline-none transition-colors focus:border-copper/60"
                 defaultValue="849 302 118 00024"
               />
             </label>
-            <Button type="submit" variant="primary">
+            <Button type="submit" variant="primary" className="h-11 w-full">
               Ouvrir le livre
             </Button>
           </form>
