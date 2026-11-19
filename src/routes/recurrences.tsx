@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { Shell } from "@/components/shell";
-import { Recurring } from "@/components/pages/money";
+
+const Recurring = lazyRouteComponent(() => import("@/components/pages/money"), "Recurring");
 
 export const Route = createFileRoute("/recurrences")({
   head: () => ({ meta: [{ title: "Récurrences — FREEV" }] }),
