@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Tableau de bord — FREEV",
+      "hasCanvas": false,
+      "bodyTextLen": 1291,
+      "bodyTextHash": "b10f6596b317d2abe2970b915c26cadfa03f5008ceea5f85456e4b783656fe59",
+      "bodyTextPrefix": "C T Novembre 2026 Individuel Groupé Global Budget du mois Solde ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Tableau de bord — FREEV",
+      "hasCanvas": false,
+      "bodyTextLen": 1252,
+      "bodyTextHash": "0e02cdea96e59e19adda85a4216a7c26388946ccc482ad9c7d9b90a68acd5f6c",
+      "bodyTextPrefix": "C T Novembre 2026 Budget du mois Solde de départ Entre comptes A",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
