@@ -15,6 +15,13 @@
   --leaf: #5dca86;
   --rose: #f08b92;
   --shadow: 0 18px 40px rgb(0 0 0 / 0.35);
+  /* Motion: shared durations and curves so nothing is hand-tuned twice. */
+  --dur-1: 140ms;
+  --dur-2: 240ms;
+  --dur-3: 420ms;
+  --dur-4: 620ms;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
   --float:
     0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.28),
     inset 0 1px 0 rgb(255 255 255 / 0.06);
@@ -118,11 +125,16 @@
   background: rgb(12 16 24 / 0.46);
 }
 
-/* Numbers and headlines settle instead of popping in on first paint. */
+/* ---------------------------------------------------------------------------
+   Motion
+   Everything below is transform/opacity only, so the compositor does the work
+   and the main thread stays free while the user scrolls.
+   --------------------------------------------------------------------------- */
+
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -130,10 +142,75 @@
   }
 }
 
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes veil-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(2px);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 1;
+  }
+}
+
 @layer base {
   main > div > header,
   main > div > section {
-    animation: rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: rise var(--dur-3) var(--ease-soft) both;
   }
 
   main > div > section:nth-child(2) {
@@ -141,7 +218,48 @@
   }
 
   main > div > section:nth-child(3) {
-    animation-delay: 80ms;
+    animation-delay: 90ms;
+  }
+}
+
+/* Cross-route fade: native View Transitions drive it, no JS shim. */
+::view-transition-old(root) {
+  animation: fade var(--dur-2) var(--ease-in-out-soft) both reverse;
+}
+
+::view-transition-new(root) {
+  animation: fade var(--dur-3) var(--ease-soft) both;
+}
+
+/* Dialog plumbing: the veil and the sheet animate independently, and the
+   closing state keeps the node mounted long enough to actually leave. */
+.sheet-veil {
+  animation: veil-in var(--dur-2) var(--ease-soft) both;
+  background: rgb(12 16 24 / 0.46);
+}
+
+.sheet {
+  animation: sheet-in var(--dur-3) var(--ease-soft) both;
+  transform-origin: bottom center;
+}
+
+.sheet[data-closing="true"] {
+  animation: sheet-out 180ms var(--ease-in-out-soft) both;
+}
+
+.sheet-veil[data-closing="true"] {
+  animation: fade 180ms var(--ease-in-out-soft) both reverse;
+}
+
+/* Statement figures settle upwards once, when they first appear. */
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
   }
 }
 

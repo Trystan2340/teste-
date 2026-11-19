@@ -10,7 +10,7 @@ import type { TxKind } from "@/lib/freev/data";
 import { cn, money, signed } from "@/lib/utils";
 
 const buttonStyles = cva(
-  "inline-flex items-center justify-center gap-2 rounded-full border text-sm font-medium transition-[background-color,color,border-color,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",
+  "inline-flex items-center justify-center gap-2 rounded-full border text-sm font-medium transition-[background-color,color,border-color,box-shadow,transform] duration-[var(--dur-1)] ease-[var(--ease-soft)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40",
   {
     variants: {
       variant: {

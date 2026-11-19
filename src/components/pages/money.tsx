@@ -44,7 +44,7 @@ export function Transactions() {
           <>
             <Link
               to="/scanner"
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-rule bg-card px-4 text-sm font-medium text-ink shadow-float transition-colors hover:border-copper/30 hover:text-copper active:scale-[0.98]"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-rule bg-card px-4 text-sm font-medium text-ink shadow-float transition-colors duration-[var(--dur-1)] hover:border-copper/30 hover:text-copper active:scale-[0.98]"
             >
               <ScanLine className="size-4" strokeWidth={1.8} />
               Scanner
@@ -62,7 +62,7 @@ export function Transactions() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="h-10 w-full rounded-full border border-transparent bg-card-2/70 pr-3 pl-9 text-sm text-ink outline-none transition-colors placeholder:text-mist focus:border-copper/40"
+            className="h-10 w-full rounded-full border border-transparent bg-card-2/70 pr-3 pl-9 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] placeholder:text-mist focus:border-copper/40"
             placeholder="Rechercher un libellé…"
           />
         </label>
@@ -80,7 +80,7 @@ export function Transactions() {
             <select
               value={f.value}
               onChange={(e) => f.set(e.target.value)}
-              className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+              className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] focus:border-copper/40"
             >
               {f.options.map((o) => (
                 <option key={o} value={o}>
@@ -99,7 +99,7 @@ export function Transactions() {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as typeof kind)}
-            className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+            className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] focus:border-copper/40"
           >
             <option value="tous">tous les types</option>
             <option value="expense">dépense</option>
@@ -134,7 +134,10 @@ export function Transactions() {
           {/* Phones get cards: a six-column table is never readable at 390 px. */}
           <ul className="space-y-2 md:hidden">
             {rows.map((t) => (
-              <li key={t.id} className="rounded-2xl border border-rule bg-card/70 p-3">
+              <li
+                key={t.id}
+                className="rounded-2xl border border-rule bg-card/70 p-3 transition-[transform,border-color] duration-[var(--dur-1)] ease-[var(--ease-soft)] hover:-translate-y-px hover:border-copper/25"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{t.label}</p>
@@ -198,7 +201,7 @@ export function Transactions() {
                 {rows.map((t) => (
                   <tr
                     key={t.id}
-                    className="group/row border-t border-rule transition-colors hover:bg-card/50 [&>td]:py-3"
+                    className="group/row border-t border-rule transition-colors duration-[var(--dur-1)] hover:bg-card/50 [&>td]:py-3"
                   >
                     <td className="whitespace-nowrap tabular-nums">{dayLabel(t.date)}</td>
                     <td>
@@ -223,7 +226,7 @@ export function Transactions() {
                           aria-label={`Modifier ${t.label}`}
                           title="Modifier"
                           onClick={() => open({ name: "tx", editId: t.id })}
-                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-card-2 hover:text-copper"
+                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors duration-[var(--dur-1)] hover:bg-card-2 hover:text-copper"
                         >
                           <Pencil className="size-4" strokeWidth={1.7} />
                         </button>
@@ -240,7 +243,7 @@ export function Transactions() {
                               () => remove(t.id),
                             )
                           }
-                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-rose/12 hover:text-rose"
+                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors duration-[var(--dur-1)] hover:bg-rose/12 hover:text-rose"
                         >
                           <Trash2 className="size-4" strokeWidth={1.7} />
                         </button>

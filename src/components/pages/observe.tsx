@@ -5,6 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Check, Clock, Flame, Repeat, TrendingUp } from "lucide-react";
 import { FlowChart, SplitChart } from "@/components/charts";
+import { CountUp } from "@/components/count-up";
 import { Amount, Button, PageHead, Stat } from "@/components/ui";
 import { flows, spentByCategory } from "@/lib/freev/calc";
 import { HISTORY, SCHEDULE, SERIES, SNAP, TODAY, inScope } from "@/lib/freev/data";
@@ -57,7 +58,9 @@ export function Dashboard() {
       <section className="chrome-pill grid gap-6 rounded-3xl bg-card p-5 md:p-6 lg:grid-cols-12 lg:items-center">
         <div className="lg:col-span-5">
           <p className="text-xs font-medium tracking-wide text-mist">Solde {scopeLabel}</p>
-          <p className="mt-2 font-serif text-5xl tabular-nums tracking-tight">{money(balance)}</p>
+          <p className="mt-2 font-serif text-5xl tracking-tight">
+            <CountUp value={balance} />
+          </p>
           <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sage/12 px-2.5 py-1 text-sm text-sage">
             <TrendingUp className="size-3.5" strokeWidth={2} />
             {pct(snap.delta)}
@@ -65,9 +68,9 @@ export function Dashboard() {
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3 lg:col-span-7">
-          <MiniStat label="Entrées" value={money(flow.inn)} note="Mois en cours" tone="sage" />
-          <MiniStat label="Sorties" value={money(flow.out)} note="Mois en cours" tone="clay" />
-          <MiniStat label="Reste à vivre" value={money(flow.rest)} note="Entrées − sorties" />
+          <MiniStat label="Entrées" amount={flow.inn} note="Mois en cours" tone="sage" />
+          <MiniStat label="Sorties" amount={flow.out} note="Mois en cours" tone="clay" />
+          <MiniStat label="Reste à vivre" amount={flow.rest} note="Entrées − sorties" />
         </div>
       </section>
 
@@ -176,7 +179,7 @@ export function Dashboard() {
                     onClick={() => setActive(a.id)}
                     title={a.id === activeId ? "Compte actif" : "Utiliser ce compte"}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors",
+                      "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors duration-[var(--dur-1)]",
                       a.id === activeId ? "bg-card-2/80" : "hover:bg-card-2/50",
                     )}
                   >
@@ -212,7 +215,7 @@ export function Dashboard() {
               <li>
                 <Link
                   to="/analytique"
-                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors hover:bg-copper/10"
+                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
                 >
                   <Flame className="mt-0.5 size-4 shrink-0 text-clay" strokeWidth={1.8} />
                   <span className="text-sm">
@@ -226,7 +229,7 @@ export function Dashboard() {
               <li>
                 <Link
                   to="/abonnements"
-                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors hover:bg-copper/10"
+                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
                 >
                   <Repeat className="mt-0.5 size-4 shrink-0 text-copper" strokeWidth={1.8} />
                   <span className="text-sm">
@@ -248,12 +251,12 @@ export function Dashboard() {
 
 function MiniStat({
   label,
-  value,
+  amount,
   note,
   tone,
 }: {
   label: string;
-  value: string;
+  amount: number;
   note: string;
   tone?: "sage" | "clay";
 }) {
@@ -262,12 +265,12 @@ function MiniStat({
       <p className="text-xs font-medium tracking-wide text-mist">{label}</p>
       <p
         className={cn(
-          "mt-1 font-serif text-2xl tabular-nums tracking-tight",
+          "mt-1 font-serif text-2xl tracking-tight",
           tone === "sage" && "text-sage",
           tone === "clay" && "text-clay",
         )}
       >
-        {value}
+        <CountUp value={amount} duration={520} />
       </p>
       <p className="mt-1 text-xs text-mist">{note}</p>
     </div>
@@ -306,7 +309,7 @@ export function Analytics() {
                 className={
                   span === n
                     ? "h-9 rounded-full bg-copper px-4 text-sm font-medium text-copper-ink shadow-float"
-                    : "h-9 rounded-full px-4 text-sm text-mist transition-colors hover:text-ink"
+                    : "h-9 rounded-full px-4 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
                 }
               >
                 {n} mois
@@ -439,7 +442,7 @@ export function Business() {
             ).map(([name, mark, last, ok]) => (
               <li
                 key={name}
-                className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors hover:bg-card-2/50"
+                className="flex items-center gap-3 rounded-2xl px-2 py-2.5 transition-colors duration-[var(--dur-1)] hover:bg-card-2/50"
               >
                 <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal/12 text-xs font-semibold text-teal">
                   {mark}

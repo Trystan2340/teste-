@@ -53,7 +53,7 @@ export function Settings() {
               className={
                 theme === id
                   ? "inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
-                  : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors hover:text-ink"
+                  : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
               }
             >
               <Icon className="size-4" strokeWidth={1.8} />
@@ -241,7 +241,7 @@ export function MonthCheck() {
               className={
                 i === step
                   ? "inline-flex h-9 items-center gap-2 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
-                  : "inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-sm text-mist transition-colors hover:text-ink"
+                  : "inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
               }
             >
               <span
@@ -336,7 +336,7 @@ export function MonthCheck() {
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-card-2">
                     <div
                       className={cn(
-                        "h-full rounded-full transition-[width] duration-500",
+                        "h-full rounded-full transition-[width] duration-[var(--dur-4)] ease-[var(--ease-soft)]",
                         over ? "bg-clay" : "bg-sage",
                       )}
                       style={{ width: `${ratio}%` }}
@@ -688,7 +688,7 @@ export function Account() {
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as typeof mode)}
-            className="mt-1 h-10 w-full rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+            className="mt-1 h-10 w-full rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] focus:border-copper/40"
           >
             <option value="perso">Personnel</option>
             <option value="pro">Pro</option>

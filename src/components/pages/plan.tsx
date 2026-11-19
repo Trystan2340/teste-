@@ -271,7 +271,7 @@ export function Savings() {
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-card-2">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-[width] duration-500",
+                    "h-full rounded-full transition-[width] duration-[var(--dur-4)] ease-[var(--ease-soft)]",
                     done ? "bg-sage" : "bg-copper",
                   )}
                   style={{ width: `${ratio}%` }}
