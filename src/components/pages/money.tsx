@@ -1,10 +1,12 @@
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Link } from "@tanstack/react-router";
 import { Pencil, ScanLine, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Amount, Button, Empty, PageHead } from "@/components/ui";
 import { useConfirmAction } from "@/components/confirm";
 import { FlowChart } from "@/components/charts";
-import { HISTORY, SERIES, inScope, type TxKind } from "@/lib/freev/data";
+import { HISTORY, SERIES, TODAY, inScope, type TxKind } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
 import { dayLabel, money } from "@/lib/utils";
 
@@ -268,6 +270,17 @@ export function Recurring() {
   const rows = txs.filter((t) => t.recurring);
   const out = rows.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
   const inn = rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const month = useFreev((s) => s.month);
+  const todayDay = Number(TODAY.slice(8, 10));
+  /** When this line hits again: this month if the day is ahead, else next month. */
+  const nextDate = (date: string) => {
+    const day = Number(date.slice(8, 10));
+    const [y, m] = month.split("-").map(Number);
+    const sameMonth = month === TODAY.slice(0, 7) ? day >= todayDay : true;
+    const d = new Date(sameMonth ? y : m === 12 ? y + 1 : y, sameMonth ? m - 1 : m % 12, 1);
+    d.setDate(Math.min(day, 28));
+    return format(d, "d MMM", { locale: fr });
+  };
   return (
     <div className="space-y-6">
       <PageHead
@@ -289,8 +302,8 @@ export function Recurring() {
             <div>
               <p className="text-sm">{t.label}</p>
               <p className="text-xs uppercase tracking-widest text-mist">
-                {t.category} · jour {Number(t.date.slice(8, 10))} ·{" "}
-                {t.scope === "pro" ? "pro" : "perso"}
+                {t.category} · prochain le {nextDate(t.date)} ·{" "}
+                {t.scope === "pro" ? "professionnel" : "personnel"}
               </p>
             </div>
             <div className="flex items-center gap-2">

@@ -434,10 +434,17 @@ export function Analytics() {
 export function Business() {
   const invoices = useFreev((s) => s.invoices);
   const accounts = useFreev((s) => s.accounts);
+  const txs = useFreev((s) => s.txs);
   const open = useFreev((s) => s.open);
   const mark = useFreev((s) => s.markInvoice);
   const pro = accounts.find((a) => a.id === "pro");
   const waiting = invoices.filter((i) => i.status !== "payée");
+  const waitingSum = waiting.reduce((s, i) => s + i.amount, 0);
+  // Real professional flows for the month being looked at, not a fixed table.
+  const month = useFreev((s) => s.month);
+  const flowsPro = monthTotals(txs, "pro", month);
+  const billed = flowsPro.inn;
+  const charges = flowsPro.out;
 
   return (
     <div className="space-y-8">
@@ -451,19 +458,43 @@ export function Business() {
           </Button>
         }
       />
+      {/*
+        These four figures used to be typed in (8 640 / 3 120 / 5 520 / 12 480),
+        so they never moved when a transaction changed. They are now derived
+        from the month's professional rows and the pro account.
+      */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "CA du mois", value: money(8640), note: "Facturé", tone: "" },
-          { label: "Charges", value: money(3120), note: "Estimées", tone: "text-clay" },
-          { label: "Résultat", value: money(5520), note: "Avant impôt", tone: "text-sage" },
           {
-            label: "Trésorerie",
-            value: money(12480),
-            note: pro ? `dont Qonto ${money(pro.balance)}` : "",
+            label: "CA du mois",
+            value: money(billed),
+            note: "Encaissé sur le périmètre pro",
             tone: "",
           },
-        ].map((k) => (
-          <div key={k.label} className="rounded-2xl border border-rule bg-card/70 p-4">
+          {
+            label: "Attendu",
+            value: money(waitingSum),
+            note: "Factures non payées",
+            tone: "text-clay",
+          },
+          {
+            label: "Charges",
+            value: money(charges),
+            note: "Sur le périmètre pro",
+            tone: "text-clay",
+          },
+          {
+            label: "Trésorerie",
+            value: money(pro?.balance ?? 0),
+            note: "Compte Qonto",
+            tone: "text-sage",
+          },
+        ].map((k, index) => (
+          <div
+            key={k.label}
+            {...stagger(index, 60)}
+            className="rounded-2xl border border-rule bg-card/70 p-4"
+          >
             <p className="text-xs font-medium tracking-wide text-mist">{k.label}</p>
             <p className={cn("mt-1 font-serif text-3xl tabular-nums tracking-tight", k.tone)}>
               {k.value}
