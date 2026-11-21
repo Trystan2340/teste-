@@ -242,20 +242,25 @@ export function MonthCheck() {
         title="Contrôle mensuel"
         lede={`Quatre temps pour fermer ${label} sans rien laisser de côté.`}
       />
+      {/*
+        Four steps do not fit a 390 px pill row: it used to scroll and cut
+        "Budget" and "Rapport" with no affordance. Below `sm` the steps become a
+        2×2 grid that shows all four at once; from `sm` it goes back to a pill.
+      */}
       <ol
-        className="flex gap-1 overflow-x-auto rounded-full bg-card-2 p-1 [scrollbar-width:none]"
+        className="grid grid-cols-2 gap-1 rounded-2xl bg-card-2 p-1 sm:flex sm:rounded-full"
         aria-label="Étapes du contrôle mensuel"
       >
         {STEPS.map((label, i) => (
-          <li key={label} className="shrink-0">
+          <li key={label} className="min-w-0 sm:shrink-0">
             <button
               type="button"
               aria-current={i === step ? "step" : undefined}
               onClick={() => setStep(i)}
               className={
                 i === step
-                  ? "inline-flex h-9 items-center gap-2 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
-                  : "inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
+                  ? "inline-flex h-9 w-full items-center justify-center gap-2 rounded-full bg-copper px-3 text-sm font-medium text-copper-ink shadow-float sm:w-auto sm:px-3.5"
+                  : "inline-flex h-9 w-full items-center justify-center gap-2 rounded-full px-3 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink sm:w-auto sm:px-3.5"
               }
             >
               <span

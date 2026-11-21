@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeftRight,
+  Briefcase,
   Calendar,
   ChartLine,
   ChevronLeft,
@@ -20,7 +21,6 @@ import {
   Store,
   Target,
   UserRound,
-  Users,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -62,9 +62,9 @@ const MORE = [
 ] as const;
 
 const MODES: { id: Mode; label: string; icon: typeof UserRound }[] = [
-  { id: "perso", label: "Individuel", icon: UserRound },
-  { id: "pro", label: "Groupé", icon: Users },
-  { id: "both", label: "Global", icon: Globe },
+  { id: "perso", label: "Personnel", icon: UserRound },
+  { id: "pro", label: "Professionnel", icon: Briefcase },
+  { id: "both", label: "Tout", icon: Globe },
 ];
 
 const MONTHS = [
@@ -361,6 +361,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const theme = useFreev((s) => s.theme);
   const [cal, setCal] = useState(false);
   const [year, setYear] = useState(() => Number(month.slice(0, 4)));
+  // The active scope must be visible, even when the header row scrolls.
+  const activeModeRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    activeModeRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [mode]);
 
   useEffect(() => {
     void useFreev.persist.rehydrate();
@@ -483,6 +488,7 @@ export function Shell({ children }: { children: ReactNode }) {
                     type="button"
                     role="tab"
                     aria-selected={on}
+                    ref={on ? activeModeRef : undefined}
                     onClick={() => setMode(m.id)}
                     className={cn(
                       "inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors sm:px-3",

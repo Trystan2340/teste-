@@ -35,7 +35,8 @@ export function Dashboard() {
   const monthShort = monthName(month, "short");
   const todayDay = Number(TODAY.slice(8, 10));
   const isCurrent = month === TODAY.slice(0, 7);
-  const scopeLabel = mode === "pro" ? "pro" : mode === "perso" ? "personnel" : "global";
+  const scopeLabel =
+    mode === "pro" ? "professionnel" : mode === "perso" ? "personnel" : "personnel + pro";
 
   return (
     <div className="space-y-5">
@@ -650,7 +651,7 @@ export function Report() {
                 <>Mois clos · total agrégé</>
               )}{" "}
               · périmètre{" "}
-              {mode === "both" ? "global" : mode === "pro" ? "professionnel" : "personnel"}
+              {mode === "both" ? "personnel + pro" : mode === "pro" ? "professionnel" : "personnel"}
             </p>
           </div>
 
