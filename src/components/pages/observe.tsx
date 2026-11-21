@@ -1,5 +1,3 @@
-import { format, parseISO } from "date-fns";
-import { fr } from "date-fns/locale";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,10 +7,10 @@ import { CountUp } from "@/components/count-up";
 import { stagger } from "@/lib/stagger";
 import { Reveal } from "@/components/reveal";
 import { Amount, Button, PageHead, Stat } from "@/components/ui";
-import { flows, spentByCategory } from "@/lib/freev/calc";
-import { HISTORY, SCHEDULE, SERIES, SNAP, TODAY, inScope } from "@/lib/freev/data";
+import { change, monthTotals, previousMonth, spentByCategory } from "@/lib/freev/calc";
+import { SCHEDULE, SERIES, SNAP, TODAY, inScope } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
-import { dayLabel, money, pct, cn } from "@/lib/utils";
+import { dayLabel, money, monthName, pct, cn } from "@/lib/utils";
 
 export function Dashboard() {
   const mode = useFreev((s) => s.mode);
@@ -22,7 +20,10 @@ export function Dashboard() {
   const open = useFreev((s) => s.open);
   const activeId = useFreev((s) => s.activeAccountId);
   const setActive = useFreev((s) => s.setActiveAccount);
-  const flow = flows(txs, mode, month);
+  const flow = monthTotals(txs, mode, month);
+  const before = monthTotals(txs, mode, previousMonth(month));
+  // Month-on-month movement, recomputed per month instead of a baked figure.
+  const balanceDelta = change(flow.rest, before.rest);
   const visible = accounts.filter((a) => inScope(a.scope, mode));
   const balance = visible.reduce((s, a) => s + a.balance, 0);
   const recent = [...txs]
@@ -31,7 +32,7 @@ export function Dashboard() {
     .slice(0, 6);
   const split = spentByCategory(txs, mode, month);
   const snap = SNAP[mode];
-  const monthName = format(parseISO(`${month}-01`), "MMMM", { locale: fr });
+  const monthShort = monthName(month, "short");
   const todayDay = Number(TODAY.slice(8, 10));
   const isCurrent = month === TODAY.slice(0, 7);
   const scopeLabel = mode === "pro" ? "pro" : mode === "perso" ? "personnel" : "global";
@@ -39,7 +40,7 @@ export function Dashboard() {
   return (
     <div className="space-y-5">
       <PageHead
-        kicker={`${format(parseISO(`${month}-01`), "MMMM yyyy", { locale: fr })} · livre`}
+        kicker={`${monthName(month)} · livre`}
         title="Tableau de bord"
         lede="Le mois en cours, les échéances encore devant, et ce qui a déjà bougé."
         actions={
@@ -63,15 +64,27 @@ export function Dashboard() {
           <p className="mt-2 font-serif text-5xl tracking-tight">
             <CountUp value={balance} />
           </p>
-          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sage/12 px-2.5 py-1 text-sm text-sage">
-            <TrendingUp className="size-3.5" strokeWidth={2} />
-            {pct(snap.delta)}
-            <span className="text-mist">vs mois dernier</span>
-          </p>
+          {balanceDelta === null ? (
+            <p className="mt-2 text-sm text-mist">Pas de mois précédent à comparer.</p>
+          ) : (
+            <p
+              className={cn(
+                "mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm",
+                balanceDelta >= 0 ? "bg-sage/12 text-sage" : "bg-clay/12 text-clay",
+              )}
+            >
+              <TrendingUp
+                className={cn("size-3.5", balanceDelta < 0 && "rotate-180")}
+                strokeWidth={2}
+              />
+              {pct(balanceDelta)}
+              <span className="text-mist">vs {monthName(previousMonth(month), "short")}</span>
+            </p>
+          )}
         </div>
         <div className="grid gap-3 sm:grid-cols-3 lg:col-span-7">
-          <MiniStat label="Entrées" amount={flow.inn} note="Mois en cours" tone="sage" />
-          <MiniStat label="Sorties" amount={flow.out} note="Mois en cours" tone="clay" />
+          <MiniStat label="Entrées" amount={flow.inn} note={monthShort} tone="sage" />
+          <MiniStat label="Sorties" amount={flow.out} note={monthShort} tone="clay" />
           <MiniStat label="Reste à vivre" amount={flow.rest} note="Entrées − sorties" />
         </div>
       </section>
@@ -102,7 +115,7 @@ export function Dashboard() {
                         <span className="min-w-0">
                           <p className="truncate text-sm">{item.label}</p>
                           <p className="text-xs text-mist">
-                            {monthName}
+                            {monthShort}
                             <span
                               className={cn(
                                 "ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px]",
@@ -134,7 +147,11 @@ export function Dashboard() {
               </div>
               <ul className="stagger mt-3 divide-y divide-rule">
                 {recent.length === 0 ? (
-                  <li className="py-6 text-sm text-mist">Aucune opération ce mois.</li>
+                  <li className="py-6 text-sm text-mist">
+                    {flow.rows.length
+                      ? "Aucune opération visible dans ce périmètre."
+                      : `Le détail n’est tenu que pour le mois courant : ${monthName(month)} reste en agrégat.`}
+                  </li>
                 ) : null}
                 {recent.map((t, index) => (
                   <li
@@ -294,10 +311,15 @@ export function Analytics() {
   const mode = useFreev((s) => s.mode);
   const month = useFreev((s) => s.month);
   const txs = useFreev((s) => s.txs);
-  const flow = flows(txs, mode, month);
+  const flow = monthTotals(txs, mode, month);
+  const before = monthTotals(txs, mode, previousMonth(month));
   const split = spentByCategory(txs, mode, month);
   const data = SERIES.slice(-span);
+  // Headline movement, computed from the two months on screen.
+  const innDelta = change(flow.inn, before.inn);
+  const outDelta = change(flow.out, before.out);
   const rate = flow.inn ? (flow.rest / flow.inn) * 100 : 0;
+  const monthShortName = monthName(month);
 
   return (
     <div className="space-y-8">
@@ -331,9 +353,19 @@ export function Analytics() {
         }
       />
       <section className="grid border-y border-rule sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Entrées" value={money(flow.inn)} note={pct(6.4)} tone="sage" />
-        <Stat label="Sorties" value={money(flow.out)} note={pct(-2.1)} tone="sage" />
-        <Stat label="Épargne nette" value={money(flow.rest)} note="Novembre" />
+        <Stat
+          label="Entrées"
+          value={money(flow.inn)}
+          note={innDelta === null ? "—" : pct(innDelta)}
+          tone="sage"
+        />
+        <Stat
+          label="Sorties"
+          value={money(flow.out)}
+          note={outDelta === null ? "—" : pct(outDelta)}
+          tone="sage"
+        />
+        <Stat label="Épargne nette" value={money(flow.rest)} note={monthShortName} />
         <Stat
           label="Taux d’épargne"
           value={`${rate.toFixed(1).replace(".", ",")} %`}
@@ -359,30 +391,32 @@ export function Analytics() {
           </ul>
         </div>
         <div>
-          <h2 className="font-serif text-2xl">Novembre contre octobre</h2>
+          <h2 className="font-serif text-2xl">
+            {monthShortName} contre {monthName(previousMonth(month), "short")}
+          </h2>
           <table className="mt-4 w-full text-sm">
             <thead className="text-left text-xs uppercase tracking-widest text-mist">
               <tr>
                 <th className="py-2 font-medium"> </th>
-                <th className="py-2 font-medium">Nov.</th>
-                <th className="py-2 font-medium">Oct.</th>
+                <th className="py-2 font-medium">{monthName(month, "short")}</th>
+                <th className="py-2 font-medium">{monthName(previousMonth(month), "short")}</th>
               </tr>
             </thead>
             <tbody>
               <tr className="border-t border-rule">
                 <td className="py-3">Entrées</td>
-                <td className="tabular-nums">{money(HISTORY[0].inn)}</td>
-                <td className="tabular-nums text-mist">{money(HISTORY[1].inn)}</td>
+                <td className="tabular-nums">{money(flow.inn)}</td>
+                <td className="tabular-nums text-mist">{money(before.inn)}</td>
               </tr>
               <tr className="border-t border-rule">
                 <td className="py-3">Sorties</td>
-                <td className="tabular-nums">{money(HISTORY[0].out)}</td>
-                <td className="tabular-nums text-mist">{money(HISTORY[1].out)}</td>
+                <td className="tabular-nums">{money(flow.out)}</td>
+                <td className="tabular-nums text-mist">{money(before.out)}</td>
               </tr>
               <tr className="border-t border-rule">
                 <td className="py-3">Net</td>
-                <td className="tabular-nums text-sage">{money(HISTORY[0].inn - HISTORY[0].out)}</td>
-                <td className="tabular-nums text-mist">{money(HISTORY[1].inn - HISTORY[1].out)}</td>
+                <td className="tabular-nums text-sage">{money(flow.rest)}</td>
+                <td className="tabular-nums text-mist">{money(before.rest)}</td>
               </tr>
             </tbody>
           </table>
@@ -538,10 +572,13 @@ export function Report() {
   const month = useFreev((s) => s.month);
   const txs = useFreev((s) => s.txs);
   const profile = useFreev((s) => s.profile);
-  const flow = flows(txs, mode, month);
+  const flow = monthTotals(txs, mode, month);
+  const before = monthTotals(txs, mode, previousMonth(month));
+  // Past months keep their category split from the journal where it exists.
   const split = spentByCategory(txs, mode, month);
-  const monthName = format(parseISO(`${month}-01`), "MMMM yyyy", { locale: fr });
+  const label = monthName(month);
   const top = split.slice(0, 6);
+  const netDelta = change(flow.rest, before.rest);
   const biggest = top[0];
   const share = biggest && flow.out > 0 ? Math.round((biggest.value / flow.out) * 100) : 0;
   const rate = flow.inn > 0 ? Math.round((flow.rest / flow.inn) * 100) : 0;
@@ -596,11 +633,18 @@ export function Report() {
                 FREEV · {profile.name}
               </p>
               <h2 className="mt-2 font-serif text-4xl leading-none tracking-tight md:text-5xl">
-                Livre de <span className="capitalize">{monthName}</span>
+                Livre de <span className="capitalize">{label}</span>
               </h2>
             </div>
             <p className="max-w-[13rem] text-right text-xs leading-relaxed text-mist">
-              Établi sur {flow.rows.length} opération{flow.rows.length > 1 ? "s" : ""} · périmètre{" "}
+              {flow.rows.length ? (
+                <>
+                  Établi sur {flow.rows.length} opération{flow.rows.length > 1 ? "s" : ""}
+                </>
+              ) : (
+                <>Mois clos · total agrégé</>
+              )}{" "}
+              · périmètre{" "}
               {mode === "both" ? "global" : mode === "pro" ? "professionnel" : "personnel"}
             </p>
           </div>
@@ -610,8 +654,17 @@ export function Report() {
             <strong className="font-medium text-ink">{money(flow.inn)}</strong>, les sorties à{" "}
             <strong className="font-medium text-ink">{money(flow.out)}</strong>. Le reste à vivre
             est de <strong className="font-medium text-ink">{money(flow.rest)}</strong>
-            {rate > 0 ? `, soit ${rate} % des entrées gardés de côté` : null}. La santé du mois
-            reste à <strong className="font-medium text-ink">{SNAP[mode].health}</strong>.
+            {rate > 0 ? `, soit ${rate} % des entrées gardés de côté` : null}
+            {netDelta === null ? null : (
+              <>
+                {" "}
+                — {netDelta >= 0 ? "en hausse" : "en baisse"} de{" "}
+                <strong className="font-medium text-ink">{pct(Math.abs(netDelta))}</strong> sur{" "}
+                {monthName(previousMonth(month), "short")}
+              </>
+            )}
+            . La santé du mois reste à{" "}
+            <strong className="font-medium text-ink">{SNAP[mode].health}</strong>.
           </p>
         </header>
 
@@ -634,6 +687,11 @@ export function Report() {
         <Reveal className="grid gap-8 px-6 py-8 md:px-10 lg:grid-cols-12">
           <section className="lg:col-span-7">
             <h3 className="font-serif text-2xl tracking-tight">Sorties par poste</h3>
+            {top.length === 0 ? (
+              <p className="mt-3 text-sm text-mist">
+                Le détail par poste n’est tenu que pour le mois courant. Ce mois reste en agrégat.
+              </p>
+            ) : null}
             <ul className="mt-3 space-y-2">
               {top.map((c) => {
                 const width = biggest ? Math.max((c.value / biggest.value) * 100, 3) : 0;
@@ -674,7 +732,7 @@ export function Report() {
               <li className="rounded-2xl bg-card-2/70 p-3">
                 <p className="text-xs text-mist">Prochaine étape</p>
                 <p className="mt-0.5">
-                  Passer le contrôle mensuel pour fermer {monthName} sans rien laisser de côté.
+                  Passer le contrôle mensuel pour fermer {label} sans rien laisser de côté.
                 </p>
                 <Link to="/controle" className="mt-1 inline-block text-sm text-copper">
                   Ouvrir le contrôle →

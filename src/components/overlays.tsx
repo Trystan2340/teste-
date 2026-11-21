@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { Button, Field, Select, Toggle } from "@/components/ui";
 import { CATEGORIES, LOGOS, SCHEDULE, TODAY, type Scope, type TxKind } from "@/lib/freev/data";
+import { nextMonth } from "@/lib/freev/calc";
 import { useFreev } from "@/lib/freev/store";
 import { cn, money, uid } from "@/lib/utils";
 import { DialogCloseContext, useDialogClose, useSheetClose } from "@/components/dialog-motion";
@@ -313,7 +314,9 @@ function TxDialog() {
 function DuplicateDialog() {
   const close = useDialogClose();
   const mark = useFreev((s) => s.markDuplicated);
-  const [month, setMonth] = useState("2026-12");
+  const current = useFreev((s) => s.month);
+  // Default to the month after the one being looked at, not a fixed December.
+  const [month, setMonth] = useState(() => nextMonth(current));
   const [income, setIncome] = useState(true);
   const [expense, setExpense] = useState(true);
   return (
@@ -795,7 +798,9 @@ function RecurrenceDialog({ id }: { id?: string }) {
               if (!label.trim() || !n) return;
               const signed = income ? n : -n;
               const d = Math.min(28, Math.max(1, Number(day) || 1));
-              const date = `2026-11-${String(d).padStart(2, "0")}`;
+              // Stamp the recurring line in the month being looked at, so it does
+              // not silently land in November whatever the header says.
+              const date = `${useFreev.getState().month}-${String(d).padStart(2, "0")}`;
               if (existing) {
                 update(existing.id, {
                   label: label.trim(),

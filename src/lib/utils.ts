@@ -8,7 +8,6 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function money(n: number, digits?: number) {
-  const frac = digits ?? (Number.isInteger(Math.round(n * 100) / 100) ? 0 : 2);
   const rounded = Math.round(n * 100) / 100;
   const use = Number.isInteger(rounded) ? 0 : 2;
   return new Intl.NumberFormat("fr-FR", {
@@ -37,6 +36,14 @@ export function pct(n: number) {
 
 export function dayLabel(iso: string) {
   return format(parseISO(iso), "d MMM", { locale: fr });
+}
+
+/** "novembre 2026" / "nov." for a `YYYY-MM` key, capitalised the French way. */
+export function monthName(iso: string, style: "long" | "short" = "long") {
+  const raw = format(parseISO(`${iso}-01`), style === "long" ? "MMMM yyyy" : "MMM", {
+    locale: fr,
+  });
+  return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
 export function monthLabel(iso: string) {

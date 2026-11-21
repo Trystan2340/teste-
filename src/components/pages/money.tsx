@@ -322,14 +322,16 @@ export function Recurring() {
 }
 
 export function HistoryPage() {
-  const [id, setId] = useState(HISTORY[0].id);
+  const today = useFreev((s) => s.month);
+  const setMonth = useFreev((s) => s.setMonth);
+  const [id, setId] = useState(today);
   const current = HISTORY.find((h) => h.id === id) ?? HISTORY[0];
   return (
     <div className="space-y-6">
       <PageHead
         kicker="Opérations"
         title="Historique"
-        lede="Six mois de flux. Novembre ouvre le journal détaillé."
+        lede="Six mois de flux. Le mois courant ouvre le journal détaillé."
       />
       <FlowChart data={[...SERIES]} />
       <div className="grid gap-6 lg:grid-cols-12">
@@ -338,7 +340,11 @@ export function HistoryPage() {
             <li key={h.id}>
               <button
                 type="button"
-                onClick={() => setId(h.id)}
+                onClick={() => {
+                  setId(h.id);
+                  // Picking a month in the history also moves the whole app.
+                  setMonth(h.id);
+                }}
                 className="flex w-full items-center justify-between py-3 text-left"
               >
                 <span className={h.id === id ? "text-ink" : "text-mist"}>{h.label}</span>
@@ -363,16 +369,16 @@ export function HistoryPage() {
               <dd className="font-serif text-2xl">{money(current.inn - current.out)}</dd>
             </div>
           </dl>
-          {current.id === "2026-11" ? (
+          {current.id === today ? (
             <Link
               to="/transactions"
               className="mt-6 inline-block text-xs uppercase tracking-widest text-copper"
             >
-              Ouvrir le journal de novembre
+              Ouvrir le journal de {current.label.split(" ")[0].toLowerCase()}
             </Link>
           ) : (
             <p className="mt-6 text-sm text-mist">
-              Le détail ligne à ligne est tenu pour novembre. Les mois précédents restent en
+              Le détail ligne à ligne n’est tenu que pour le mois courant. Les autres restent en
               agrégat.
             </p>
           )}

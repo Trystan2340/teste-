@@ -5,10 +5,10 @@ import { FileText, Flame, Monitor, Moon, Repeat, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, InlineInput, PageHead, Toggle } from "@/components/ui";
-import { HELP, SESSIONS } from "@/lib/freev/data";
-import { flows, spentByCategory } from "@/lib/freev/calc";
+import { HELP, SESSIONS, TODAY } from "@/lib/freev/data";
+import { monthTotals, spentByCategory } from "@/lib/freev/calc";
 import { useFreev, type ThemeChoice } from "@/lib/freev/store";
-import { cn, money } from "@/lib/utils";
+import { cn, money, monthName } from "@/lib/utils";
 import { stagger } from "@/lib/stagger";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
@@ -225,14 +225,16 @@ export function MonthCheck() {
   const [step, setStep] = useState(0);
   const txs = useFreev((s) => s.txs);
   const budgets = useFreev((s) => s.budgets);
-  const flow = flows(txs, "both");
-  const split = spentByCategory(txs, "both");
+  const month = useFreev((s) => s.month);
+  const flow = monthTotals(txs, "both", month);
+  const split = spentByCategory(txs, "both", month);
+  const label = monthName(month);
   return (
     <div className="space-y-6">
       <PageHead
         kicker="Centre"
         title="Contrôle mensuel"
-        lede="Quatre temps pour fermer novembre sans rien laisser de côté."
+        lede={`Quatre temps pour fermer ${label} sans rien laisser de côté.`}
       />
       <ol className="flex gap-1 overflow-x-auto rounded-full bg-card-2 p-1 [scrollbar-width:none]">
         {STEPS.map((label, i) => (
@@ -354,7 +356,7 @@ export function MonthCheck() {
       {step === 3 ? (
         <div>
           <p className="max-w-xl text-sm text-mist">
-            Novembre se ferme avec un net de {money(flow.rest)}. Le rapport reprend les mêmes
+            {label} se ferme avec un net de {money(flow.rest)}. Le rapport reprend les mêmes
             chiffres.
           </p>
           <Link
@@ -374,7 +376,7 @@ export function MonthCheck() {
             Continuer
           </Button>
         ) : (
-          <Button variant="primary" onClick={() => toast("Contrôle de novembre terminé")}>
+          <Button variant="primary" onClick={() => toast(`Contrôle de ${label} terminé`)}>
             Terminer
           </Button>
         )}
@@ -780,7 +782,7 @@ export function Scanner() {
             disabled={saved}
             onClick={() => {
               add({
-                date: "2026-11-19",
+                date: TODAY,
                 label: "Reçu scanné",
                 category: "Alimentation",
                 accountId: "courant",
