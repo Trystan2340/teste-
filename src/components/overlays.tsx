@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { Button, Field, Select, Toggle } from "@/components/ui";
 import { CATEGORIES, LOGOS, SCHEDULE, TODAY, type Scope, type TxKind } from "@/lib/freev/data";
@@ -45,6 +45,7 @@ function Modal({
   children: ReactNode;
 }) {
   const { close, closing } = useSheetClose();
+  const sheetRef = useRef<HTMLDivElement | null>(null);
 
   // Escape closes the dialog — expected everywhere, and previously missing.
   useEffect(() => {
@@ -54,6 +55,47 @@ function Modal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
+
+  /*
+   * A dialog that does not take focus is a dialog you can tab straight past:
+   * focus stayed on the page behind the veil, so keyboard users were typing
+   * into a form they could not see and Enter could re-trigger the button that
+   * opened the sheet. Focus the first field, keep Tab inside the sheet, and
+   * hand focus back to the opener on close.
+   */
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const node = sheetRef.current;
+    if (!node) return;
+    const focusables = () =>
+      [
+        ...node.querySelectorAll<HTMLElement>(
+          "input, select, textarea, button, [href], [tabindex]",
+        ),
+      ].filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+    const first = node.querySelector<HTMLElement>("input, select, textarea") ?? focusables()[0];
+    first?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const start = list[0];
+      const end = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === start) {
+        e.preventDefault();
+        end.focus();
+      } else if (!e.shiftKey && document.activeElement === end) {
+        e.preventDefault();
+        start.focus();
+      }
+    };
+    node.addEventListener("keydown", onKey);
+    return () => {
+      node.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
+  }, []);
 
   return (
     <DialogCloseContext.Provider value={close}>
@@ -66,6 +108,7 @@ function Modal({
           onClick={close}
         />
         <div
+          ref={sheetRef}
           role="dialog"
           aria-modal="true"
           aria-label={title}

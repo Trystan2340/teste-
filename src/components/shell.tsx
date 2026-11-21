@@ -23,7 +23,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { HELP, type Mode } from "@/lib/freev/data";
@@ -429,7 +429,14 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="relative px-2 pt-2 md:px-3 md:pt-3">
-          <header className="chrome-pill flex items-center gap-2 overflow-x-auto rounded-3xl bg-card/95 px-2 py-2 [scrollbar-width:none] backdrop-blur-md lg:h-14 lg:flex-nowrap lg:rounded-full lg:py-0">
+          {/*
+            The header used to be one endless horizontal scroller: on a 1024 px
+            screen it silently cut "Entre comptes" and the primary action in
+            half, with no scrollbar to hint there was more. It now wraps on every
+            width where the row does not fit (the whole bar is ~1330 px) and
+            keeps the single pill only from `2xl` up.
+          */}
+          <header className="chrome-pill flex flex-wrap items-center gap-2 rounded-3xl bg-card/95 px-2 py-2 backdrop-blur-md 2xl:h-14 2xl:flex-nowrap 2xl:rounded-full 2xl:py-0">
             <div className="flex h-10 shrink-0 items-center rounded-full bg-card-2 px-1">
               <button
                 type="button"
@@ -491,7 +498,7 @@ export function Shell({ children }: { children: ReactNode }) {
               })}
             </div>
 
-            <div className="ml-auto flex shrink-0 items-center gap-1">
+            <div className="ml-auto flex shrink-0 items-center gap-1 max-xl:basis-full max-xl:justify-end">
               <button
                 type="button"
                 onClick={() => setSearch(true)}
@@ -614,9 +621,21 @@ function SearchOverlay() {
   const setSearch = useFreev((s) => s.setSearch);
   const txs = useFreev((s) => s.txs);
   const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (!open) setValue("");
+    else inputRef.current?.focus();
   }, [open]);
+  // The palette is a modal, so it has to answer Escape like one. It used to
+  // ignore the key entirely and could only be dismissed with the mouse.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSearch(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setSearch]);
   if (!open) return null;
   const q = value.trim().toLowerCase();
   const pages = [...RAIL, ...LIFE.map((l) => ({ to: l.to, label: l.label })), ...MORE].filter(
@@ -636,13 +655,14 @@ function SearchOverlay() {
       />
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Recherche"
-        className="relative mx-auto mt-16 w-full max-w-xl rounded-3xl border border-rule bg-card p-5 shadow-lift"
+        className="relative mx-auto mt-16 w-[calc(100%-1.5rem)] max-w-xl rounded-3xl border border-rule bg-card p-5 shadow-lift"
       >
         <div className="flex items-center gap-3 border-b border-rule">
           <Search className="size-4 text-mist" />
           <input
-            autoFocus
+            ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Page, opération, aide"

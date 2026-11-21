@@ -220,7 +220,7 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
         </div>
       </div>
 
-      <ul className="w-full space-y-1.5">
+      <ul className="w-full min-w-0 space-y-1.5">
         {top.map((slice, i) => (
           <li key={slice.name}>
             <button
@@ -239,10 +239,11 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
                 style={{ background: SLICE[i % SLICE.length] }}
               />
               <span className="min-w-0 flex-1 truncate">{slice.name}</span>
-              <span className="tabular-nums text-mist">
+              {/* Percentage is decoration; drop it before squeezing the name. */}
+              <span className="hidden shrink-0 tabular-nums text-mist sm:inline">
                 {Math.round((slice.value / total) * 100)} %
               </span>
-              <span className="w-20 text-right tabular-nums">{money(slice.value)}</span>
+              <span className="shrink-0 text-right tabular-nums">{money(slice.value)}</span>
             </button>
           </li>
         ))}

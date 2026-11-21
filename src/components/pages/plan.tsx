@@ -48,14 +48,14 @@ export function Planner() {
         }
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
           >
             Mois précédent
           </Button>
-          <p className="min-w-40 text-center font-serif text-2xl capitalize">
+          <p className="min-w-32 text-center font-serif text-2xl capitalize sm:min-w-40">
             {format(cursor, "MMMM yyyy", { locale: fr })}
           </p>
           <Button
@@ -255,7 +255,7 @@ export function Savings() {
           </Button>
         }
       />
-      <ul className="stagger grid gap-3 md:grid-cols-2">
+      <ul className="stagger grid min-w-0 gap-3 md:grid-cols-2">
         {goals.map((g, index) => {
           const ratio = g.target ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
           const done = ratio >= 100;
@@ -264,7 +264,7 @@ export function Savings() {
             <li
               key={g.id}
               {...stagger(index)}
-              className="chrome-pill flex flex-col rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+              className="chrome-pill flex min-w-0 flex-col rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

@@ -109,7 +109,7 @@ export function Transactions() {
         </label>
         <Button
           variant="quiet"
-          className="h-10 px-3"
+          className="h-10 w-full px-3 text-copper disabled:text-mist md:w-auto md:text-right"
           onClick={() => {
             setQ("");
             setCat("toutes");
@@ -204,7 +204,7 @@ export function Transactions() {
                     className="group/row border-t border-rule transition-colors duration-[var(--dur-1)] hover:bg-card/50 [&>td]:py-3"
                   >
                     <td className="whitespace-nowrap tabular-nums">{dayLabel(t.date)}</td>
-                    <td>
+                    <td className="max-w-[22rem]">
                       {t.label}
                       {t.pending ? (
                         <span className="ml-2 rounded-full bg-copper/12 px-1.5 py-0.5 text-[11px] text-copper">

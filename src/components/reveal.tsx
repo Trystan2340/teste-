@@ -36,9 +36,18 @@ export function Reveal({
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce || typeof IntersectionObserver === "undefined") return;
 
+    const visible = () => {
+      const rect = node.getBoundingClientRect();
+      return rect.top < window.innerHeight * 0.92 && rect.bottom > 0;
+    };
+    const near = () => {
+      const rect = node.getBoundingClientRect();
+      // Coming from below, or still partly on screen after a jump.
+      return rect.top < window.innerHeight * 1.05 && rect.bottom > -80;
+    };
+
     // Already visible on arrival: keep it that way.
-    const rect = node.getBoundingClientRect();
-    if (rect.top < window.innerHeight * 0.92) return;
+    if (visible()) return;
 
     setState("hidden");
 
@@ -54,7 +63,42 @@ export function Reveal({
     );
 
     observer.observe(node);
-    return () => observer.disconnect();
+
+    /*
+     * Safety net. A jump — anchor, browser restore, `scrollTo` — can move a
+     * block from "below the fold" to "scrolled past" between two observer
+     * callbacks; the entry then never reports `isIntersecting` and the block
+     * stays at opacity 0 for good. Re-checking on escape hatch timers and on
+     * scroll end guarantees the content always shows up.
+     */
+    const check = () => {
+      // Deliberately looser than `visible`: the point is that nothing stays
+      // stranded at opacity 0 once the user has scrolled near it.
+      if (near()) {
+        setState("shown");
+        observer.disconnect();
+        cleanup();
+      }
+    };
+    const timers = [window.setTimeout(check, 400), window.setTimeout(check, 1600)];
+    window.addEventListener("scroll", check, { passive: true, capture: true });
+    window.addEventListener("resize", check);
+    // The app scrolls inside <main>, and a `window` scroll listener never hears
+    // that: without this the net only fired on its two timers.
+    const scroller = node.closest("main") ?? window;
+    scroller.addEventListener("scroll", check, { passive: true });
+
+    const cleanup = () => {
+      for (const t of timers) window.clearTimeout(t);
+      window.removeEventListener("scroll", check, { capture: true });
+      window.removeEventListener("resize", check);
+      scroller.removeEventListener("scroll", check);
+    };
+
+    return () => {
+      observer.disconnect();
+      cleanup();
+    };
   }, []);
 
   return (
@@ -66,7 +110,9 @@ export function Reveal({
         className,
       )}
       style={state === "shown" && delay ? { animationDelay: `${delay}ms` } : undefined}
-      data-revealed={state === "shown"}
+      // "idle" means the block was already on screen and never hid — the
+      // honest value for debugging, not a booleans-as-string.
+      data-revealed={state}
     >
       {children}
     </div>

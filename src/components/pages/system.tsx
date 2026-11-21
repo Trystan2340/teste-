@@ -19,7 +19,12 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
         <p className="text-sm">{label}</p>
         {hint ? <p className="text-sm text-mist">{hint}</p> : null}
       </div>
-      <div className="md:col-span-7">{children}</div>
+      {/*
+        Control cluster: on a wide row the control belongs next to the label it
+        describes, not floating at the start of an empty 7-column track. Rows
+        with buttons or a segmented control keep their own layout.
+      */}
+      <div className="md:col-span-7 md:justify-self-end">{children}</div>
     </div>
   );
 }
@@ -237,7 +242,10 @@ export function MonthCheck() {
         title="Contrôle mensuel"
         lede={`Quatre temps pour fermer ${label} sans rien laisser de côté.`}
       />
-      <ol className="flex gap-1 overflow-x-auto rounded-full bg-card-2 p-1 [scrollbar-width:none]">
+      <ol
+        className="flex gap-1 overflow-x-auto rounded-full bg-card-2 p-1 [scrollbar-width:none]"
+        aria-label="Étapes du contrôle mensuel"
+      >
         {STEPS.map((label, i) => (
           <li key={label} className="shrink-0">
             <button

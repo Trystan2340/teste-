@@ -82,7 +82,7 @@ export function Dashboard() {
             </p>
           )}
         </div>
-        <div className="grid gap-3 sm:grid-cols-3 lg:col-span-7">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-3 lg:col-span-7">
           <MiniStat label="Entrées" amount={flow.inn} note={monthShort} tone="sage" />
           <MiniStat label="Sorties" amount={flow.out} note={monthShort} tone="clay" />
           <MiniStat label="Reste à vivre" amount={flow.rest} note="Entrées − sorties" />
@@ -173,10 +173,14 @@ export function Dashboard() {
           </div>
           <div className="space-y-5 lg:col-span-5">
             <div className="chrome-pill rounded-3xl bg-card p-5">
-              <p className="text-xs font-medium tracking-wide text-mist">Santé du mois</p>
+              <p className="text-xs font-medium tracking-wide text-mist">Santé du mois · sur 100</p>
               <p className="mt-1 font-serif text-6xl tabular-nums tracking-tight">{snap.health}</p>
               <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">
-                Stable. Une charge d’énergie sort du rang, le reste suit le budget.
+                {snap.health >= 80
+                  ? "Le mois tient. Une charge d’énergie sort du rang, le reste suit le budget."
+                  : snap.health >= 60
+                    ? "Correct, mais la marge se réduit : deux postes dépassent leur moyenne."
+                    : "Sous tension. Les sorties pèsent plus lourd que d’habitude pour ce stade du mois."}
               </p>
             </div>
             <div className="chrome-pill rounded-3xl bg-card p-5">
@@ -369,7 +373,7 @@ export function Analytics() {
         <Stat
           label="Taux d’épargne"
           value={`${rate.toFixed(1).replace(".", ",")} %`}
-          note="Du mois"
+          note="Part du net sur les entrées"
         />
       </section>
       <section>
