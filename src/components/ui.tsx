@@ -213,11 +213,21 @@ export function Amount({ value, kind }: { value: number; kind?: TxKind }) {
   );
 }
 
-export function Empty({ title, body }: { title: string; body: string }) {
+export function Empty({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  /** Optional way out — an empty state that only explains is a dead end. */
+  action?: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-dashed border-rule bg-card/60 px-4 py-10 text-center">
       <p className="font-serif text-2xl">{title}</p>
       <p className="mt-2 text-sm text-mist">{body}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
 }

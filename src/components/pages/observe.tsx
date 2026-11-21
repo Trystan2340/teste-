@@ -1,16 +1,154 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Clock, Flame, Repeat, TrendingUp } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Check,
+  Clock,
+  Eye,
+  EyeOff,
+  Flame,
+  GripVertical,
+  Repeat,
+  SlidersHorizontal,
+  TrendingUp,
+} from "lucide-react";
 import { FlowChart, SplitChart } from "@/components/charts";
 import { CountUp } from "@/components/count-up";
 import { stagger } from "@/lib/stagger";
 import { Reveal } from "@/components/reveal";
-import { Amount, Button, PageHead, Stat } from "@/components/ui";
+import { Amount, Button, Empty, PageHead, Stat } from "@/components/ui";
 import { change, monthTotals, previousMonth, spentByCategory } from "@/lib/freev/calc";
 import { SCHEDULE, SERIES, SNAP, TODAY, inScope } from "@/lib/freev/data";
-import { useFreev } from "@/lib/freev/store";
+import { type DashBlock, useFreev } from "@/lib/freev/store";
 import { dayLabel, money, monthName, pct, cn } from "@/lib/utils";
+
+/**
+ * One dashboard block, wrapped in the frame that lets the reader move it.
+ *
+ * Drag and drop alone is not an acceptable affordance: it does nothing from a
+ * keyboard, and browsers do not start a native drag on touch. So the same
+ * reordering is reachable from the small control cluster on top of each block
+ * — "Monter", "Descendre", "Masquer" — disclosed by the "Personnaliser"
+ * switch, not shown on a settled dashboard.
+ */
+function Block({
+  id,
+  label,
+  editing,
+  index,
+  count,
+  children,
+}: {
+  id: DashBlock;
+  label: string;
+  editing: boolean;
+  index: number;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const move = useFreev((s) => s.moveDashBlock);
+  const place = useFreev((s) => s.placeDashBlock);
+  const toggle = useFreev((s) => s.toggleDashBlock);
+  const [over, setOver] = useState(false);
+  const [dragging, setDragging] = useState(false);
+
+  return (
+    <section
+      data-block={id}
+      draggable={editing}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", id);
+        e.dataTransfer.effectAllowed = "move";
+        setDragging(true);
+      }}
+      onDragEnd={() => {
+        setDragging(false);
+        setOver(false);
+      }}
+      onDragOver={(e) => {
+        if (!editing) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        if (!editing) return;
+        e.preventDefault();
+        setOver(false);
+        const from = e.dataTransfer.getData("text/plain") as DashBlock;
+        if (from && from !== id) place(from, index);
+      }}
+      className={cn(
+        "relative mb-5 break-inside-avoid rounded-3xl transition-[background-color,box-shadow] duration-[var(--dur-1)]",
+        editing && "cursor-grab border border-dashed border-copper/25 bg-card/25 p-2.5",
+        dragging && "opacity-40",
+        over && !dragging && "border-copper/70 bg-copper/6",
+      )}
+    >
+      {editing ? (
+        <div className="mb-2 flex items-center justify-between gap-2 px-0.5">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-copper">
+            <GripVertical className="size-3.5" strokeWidth={2} />
+            {label}
+          </span>
+          <span className="flex items-center gap-1">
+            <IconBtn label={`Monter ${label}`} disabled={index === 0} onClick={() => move(id, -1)}>
+              <ArrowUp className="size-3.5" strokeWidth={2.2} />
+            </IconBtn>
+            <IconBtn
+              label={`Descendre ${label}`}
+              disabled={index === count - 1}
+              onClick={() => move(id, 1)}
+            >
+              <ArrowDown className="size-3.5" strokeWidth={2.2} />
+            </IconBtn>
+            <IconBtn label={`Masquer ${label}`} onClick={() => toggle(id)}>
+              <EyeOff className="size-3.5" strokeWidth={2.2} />
+            </IconBtn>
+          </span>
+        </div>
+      ) : null}
+      {children}
+    </section>
+  );
+}
+
+function IconBtn({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex size-7 items-center justify-center rounded-lg bg-card-2 text-mist transition-colors hover:text-ink disabled:opacity-30"
+    >
+      {children}
+    </button>
+  );
+}
+
+const BLOCK_LABELS: Record<DashBlock, string> = {
+  schedule: "Échéancier",
+  recent: "Activité récente",
+  health: "Santé du mois",
+  accounts: "Comptes",
+  split: "Répartition des sorties",
+  watch: "À surveiller",
+};
 
 export function Dashboard() {
   const mode = useFreev((s) => s.mode);
@@ -37,6 +175,213 @@ export function Dashboard() {
   const isCurrent = month === TODAY.slice(0, 7);
   const scopeLabel =
     mode === "pro" ? "professionnel" : mode === "perso" ? "personnel" : "personnel + pro";
+
+  const dashOrder = useFreev((s) => s.dashOrder);
+  const dashHidden = useFreev((s) => s.dashHidden);
+  const toggleDash = useFreev((s) => s.toggleDashBlock);
+  const resetDash = useFreev((s) => s.resetDash);
+  const [editing, setEditing] = useState(false);
+  const visibleBlocks = dashOrder.filter((b) => !dashHidden.includes(b));
+  const hiddenBlocks = dashOrder.filter((b) => dashHidden.includes(b));
+
+  /*
+   * Each block is a closed piece of markup: it only reads the values computed
+   * above, so the order below can change without touching any block.
+   */
+  const content: Record<DashBlock, React.ReactNode> = {
+    schedule: (
+      <div className="chrome-pill rounded-3xl bg-card p-5">
+        <h2 className="font-serif text-2xl tracking-tight">Échéancier</h2>
+        <ul className="stagger mt-3 divide-y divide-rule">
+          {SCHEDULE.map((item, index) => {
+            const passed = isCurrent && item.day < todayDay;
+            return (
+              <li
+                key={item.id}
+                {...stagger(index)}
+                className="flex items-center justify-between gap-3 py-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className={cn(
+                      "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium tabular-nums",
+                      passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
+                    )}
+                  >
+                    {item.day}
+                  </span>
+                  <span className="min-w-0">
+                    <p className="truncate text-sm">{item.label}</p>
+                    <p className="text-xs text-mist">
+                      {monthShort}
+                      <span
+                        className={cn(
+                          "ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px]",
+                          passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
+                        )}
+                      >
+                        {passed ? (
+                          <Check className="size-2.5" strokeWidth={3} />
+                        ) : (
+                          <Clock className="size-2.5" />
+                        )}
+                        {passed ? "passé" : "à venir"}
+                      </span>
+                    </p>
+                  </span>
+                </div>
+                <Amount value={item.amount} />
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ),
+    recent: (
+      <div className="chrome-pill rounded-3xl bg-card p-5">
+        <div className="flex items-end justify-between">
+          <h2 className="font-serif text-2xl tracking-tight">Activité récente</h2>
+          <Link to="/transactions" className="text-sm text-copper">
+            Journal
+          </Link>
+        </div>
+        <ul className="stagger mt-3 divide-y divide-rule">
+          {recent.length === 0 ? (
+            <li className="py-6 text-sm text-mist">
+              {flow.rows.length
+                ? "Aucune opération visible dans ce périmètre."
+                : `Le détail n’est tenu que pour le mois courant : ${monthName(month)} reste en agrégat.`}
+            </li>
+          ) : null}
+          {recent.map((t, index) => (
+            <li
+              key={t.id}
+              {...stagger(index, 120)}
+              className="flex items-center justify-between gap-3 py-3"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm">{t.label}</p>
+                <p className="text-xs text-mist">
+                  {dayLabel(t.date)} · {t.category}
+                </p>
+              </div>
+              <Amount value={t.amount} kind={t.kind} />
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
+    health: (
+      <div className="chrome-pill rounded-3xl bg-card p-5">
+        <p className="text-xs font-medium tracking-wide text-mist">Santé du mois · sur 100</p>
+        <p className="mt-1 font-serif text-6xl tabular-nums tracking-tight">{snap.health}</p>
+        <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">
+          {snap.health >= 80
+            ? "Le mois tient. Une charge d’énergie sort du rang, le reste suit le budget."
+            : snap.health >= 60
+              ? "Correct, mais la marge se réduit : deux postes dépassent leur moyenne."
+              : "Sous tension. Les sorties pèsent plus lourd que d’habitude pour ce stade du mois."}
+        </p>
+      </div>
+    ),
+    accounts: (
+      <div className="chrome-pill rounded-3xl bg-card p-5">
+        <div className="flex items-end justify-between gap-3">
+          <h2 className="font-serif text-2xl tracking-tight">Comptes</h2>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              className="text-sm text-copper"
+              onClick={() => open({ name: "pick-account" })}
+            >
+              Choisir
+            </button>
+            <button
+              type="button"
+              className="text-sm text-copper"
+              onClick={() => open({ name: "accounts" })}
+            >
+              Gérer
+            </button>
+          </div>
+        </div>
+        <ul className="stagger mt-3 space-y-1">
+          {visible.map((a, index) => (
+            <li key={a.id} {...stagger(index, 60)}>
+              <button
+                type="button"
+                onClick={() => setActive(a.id)}
+                title={a.id === activeId ? "Compte actif" : "Utiliser ce compte"}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors duration-[var(--dur-1)]",
+                  a.id === activeId ? "bg-card-2/80" : "hover:bg-card-2/50",
+                )}
+              >
+                <span
+                  className={cn(
+                    "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold tracking-tight",
+                    a.kind === "pro"
+                      ? "bg-copper/12 text-copper"
+                      : a.kind === "epargne"
+                        ? "bg-sage/15 text-sage"
+                        : "bg-teal/15 text-teal",
+                  )}
+                >
+                  {a.bank.slice(0, 2).toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm">{a.name}</span>
+                  <span className="text-xs text-mist">{a.bank}</span>
+                </span>
+                <span className="shrink-0 text-sm tabular-nums">{money(a.balance)}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ),
+    split: (
+      <div className="chrome-pill rounded-3xl bg-card p-5">
+        <h2 className="font-serif text-2xl tracking-tight">Répartition des sorties</h2>
+        <SplitChart data={split} />
+      </div>
+    ),
+    watch: (
+      <div className="rounded-3xl bg-copper/8 p-5 ring-1 ring-copper/15">
+        <p className="text-xs font-medium tracking-wide text-copper">À surveiller</p>
+        <ul className="mt-3 space-y-2">
+          <li>
+            <Link
+              to="/analytique"
+              className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
+            >
+              <Flame className="mt-0.5 size-4 shrink-0 text-clay" strokeWidth={1.8} />
+              <span className="text-sm">
+                EDF a augmenté de 18 % par rapport à la moyenne.
+                <span className="mt-0.5 block text-xs text-copper/80 transition-colors group-hover:text-copper">
+                  Voir l’analytique →
+                </span>
+              </span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/abonnements"
+              className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
+            >
+              <Repeat className="mt-0.5 size-4 shrink-0 text-copper" strokeWidth={1.8} />
+              <span className="text-sm">
+                2 abonnements se renouvellent cette semaine.
+                <span className="mt-0.5 block text-xs text-copper/80 transition-colors group-hover:text-copper">
+                  Gérer les abonnements →
+                </span>
+              </span>
+            </Link>
+          </li>
+        </ul>
+      </div>
+    ),
+  };
 
   return (
     <div className="space-y-5">
@@ -90,194 +435,94 @@ export function Dashboard() {
         </div>
       </section>
 
+      {/* Block layout: the reader chooses the order and the blocks worth seeing. */}
       <Reveal>
-        <section className="grid gap-5 lg:grid-cols-12">
-          <div className="space-y-5 lg:col-span-7">
-            <div className="chrome-pill rounded-3xl bg-card p-5">
-              <h2 className="font-serif text-2xl tracking-tight">Échéancier</h2>
-              <ul className="stagger mt-3 divide-y divide-rule">
-                {SCHEDULE.map((item, index) => {
-                  const passed = isCurrent && item.day < todayDay;
-                  return (
-                    <li
-                      key={item.id}
-                      {...stagger(index)}
-                      className="flex items-center justify-between gap-3 py-3"
-                    >
-                      <div className="flex min-w-0 items-center gap-3">
-                        <span
-                          className={cn(
-                            "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium tabular-nums",
-                            passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
-                          )}
-                        >
-                          {item.day}
-                        </span>
-                        <span className="min-w-0">
-                          <p className="truncate text-sm">{item.label}</p>
-                          <p className="text-xs text-mist">
-                            {monthShort}
-                            <span
-                              className={cn(
-                                "ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px]",
-                                passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
-                              )}
-                            >
-                              {passed ? (
-                                <Check className="size-2.5" strokeWidth={3} />
-                              ) : (
-                                <Clock className="size-2.5" />
-                              )}
-                              {passed ? "passé" : "à venir"}
-                            </span>
-                          </p>
-                        </span>
-                      </div>
-                      <Amount value={item.amount} />
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-            <div className="chrome-pill rounded-3xl bg-card p-5">
-              <div className="flex items-end justify-between">
-                <h2 className="font-serif text-2xl tracking-tight">Activité récente</h2>
-                <Link to="/transactions" className="text-sm text-copper">
-                  Journal
-                </Link>
-              </div>
-              <ul className="stagger mt-3 divide-y divide-rule">
-                {recent.length === 0 ? (
-                  <li className="py-6 text-sm text-mist">
-                    {flow.rows.length
-                      ? "Aucune opération visible dans ce périmètre."
-                      : `Le détail n’est tenu que pour le mois courant : ${monthName(month)} reste en agrégat.`}
-                  </li>
-                ) : null}
-                {recent.map((t, index) => (
-                  <li
-                    key={t.id}
-                    {...stagger(index, 120)}
-                    className="flex items-center justify-between gap-3 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm">{t.label}</p>
-                      <p className="text-xs text-mist">
-                        {dayLabel(t.date)} · {t.category}
-                      </p>
-                    </div>
-                    <Amount value={t.amount} kind={t.kind} />
-                  </li>
-                ))}
-              </ul>
-            </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-mist">
+            {mode === "pro" ? "Vue pro" : mode === "perso" ? "Vue perso" : "Vue complète"} ·{" "}
+            {visibleBlocks.length} bloc{visibleBlocks.length > 1 ? "s" : ""}
+          </p>
+          <div className="flex items-center gap-2">
+            {editing ? (
+              <button
+                type="button"
+                onClick={() => {
+                  resetDash();
+                  toast("Ordre d’origine rétabli");
+                }}
+                className="text-xs text-mist underline decoration-rule underline-offset-4 hover:text-ink"
+              >
+                Ordre d’origine
+              </button>
+            ) : null}
+            <button
+              type="button"
+              aria-pressed={editing}
+              onClick={() => setEditing((v) => !v)}
+              className={cn(
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors",
+                editing ? "bg-copper text-canvas" : "bg-card-2 text-mist hover:text-ink",
+              )}
+            >
+              <SlidersHorizontal className="size-3.5" strokeWidth={2} />
+              {editing ? "Terminer" : "Personnaliser"}
+            </button>
           </div>
-          <div className="space-y-5 lg:col-span-5">
-            <div className="chrome-pill rounded-3xl bg-card p-5">
-              <p className="text-xs font-medium tracking-wide text-mist">Santé du mois · sur 100</p>
-              <p className="mt-1 font-serif text-6xl tabular-nums tracking-tight">{snap.health}</p>
-              <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">
-                {snap.health >= 80
-                  ? "Le mois tient. Une charge d’énergie sort du rang, le reste suit le budget."
-                  : snap.health >= 60
-                    ? "Correct, mais la marge se réduit : deux postes dépassent leur moyenne."
-                    : "Sous tension. Les sorties pèsent plus lourd que d’habitude pour ce stade du mois."}
-              </p>
-            </div>
-            <div className="chrome-pill rounded-3xl bg-card p-5">
-              <div className="flex items-end justify-between gap-3">
-                <h2 className="font-serif text-2xl tracking-tight">Comptes</h2>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    className="text-sm text-copper"
-                    onClick={() => open({ name: "pick-account" })}
-                  >
-                    Choisir
-                  </button>
-                  <button
-                    type="button"
-                    className="text-sm text-copper"
-                    onClick={() => open({ name: "accounts" })}
-                  >
-                    Gérer
-                  </button>
-                </div>
-              </div>
-              <ul className="stagger mt-3 space-y-1">
-                {visible.map((a, index) => (
-                  <li key={a.id} {...stagger(index, 60)}>
-                    <button
-                      type="button"
-                      onClick={() => setActive(a.id)}
-                      title={a.id === activeId ? "Compte actif" : "Utiliser ce compte"}
-                      className={cn(
-                        "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors duration-[var(--dur-1)]",
-                        a.id === activeId ? "bg-card-2/80" : "hover:bg-card-2/50",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold tracking-tight",
-                          a.kind === "pro"
-                            ? "bg-copper/12 text-copper"
-                            : a.kind === "epargne"
-                              ? "bg-sage/15 text-sage"
-                              : "bg-teal/15 text-teal",
-                        )}
-                      >
-                        {a.bank.slice(0, 2).toUpperCase()}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm">{a.name}</span>
-                        <span className="text-xs text-mist">{a.bank}</span>
-                      </span>
-                      <span className="shrink-0 text-sm tabular-nums">{money(a.balance)}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="chrome-pill rounded-3xl bg-card p-5">
-              <h2 className="font-serif text-2xl tracking-tight">Répartition des sorties</h2>
-              <SplitChart data={split} />
-            </div>
-            <div className="rounded-3xl bg-copper/8 p-5 ring-1 ring-copper/15">
-              <p className="text-xs font-medium tracking-wide text-copper">À surveiller</p>
-              <ul className="mt-3 space-y-2">
-                <li>
-                  <Link
-                    to="/analytique"
-                    className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
-                  >
-                    <Flame className="mt-0.5 size-4 shrink-0 text-clay" strokeWidth={1.8} />
-                    <span className="text-sm">
-                      EDF a augmenté de 18 % par rapport à la moyenne.
-                      <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
-                        Voir l’analytique →
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    to="/abonnements"
-                    className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
-                  >
-                    <Repeat className="mt-0.5 size-4 shrink-0 text-copper" strokeWidth={1.8} />
-                    <span className="text-sm">
-                      2 abonnements se renouvellent cette semaine.
-                      <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
-                        Gérer les abonnements →
-                      </span>
-                    </span>
-                  </Link>
-                </li>
-              </ul>
-            </div>
+        </div>
+
+        {editing ? (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl bg-card px-3 py-2.5">
+            <span className="text-xs text-mist">Masqués :</span>
+            {hiddenBlocks.length === 0 ? (
+              <span className="text-xs text-mist">aucun</span>
+            ) : (
+              hiddenBlocks.map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => toggleDash(b)}
+                  className="inline-flex items-center gap-1 rounded-full bg-card-2 px-2.5 py-1 text-xs text-ink hover:text-copper"
+                >
+                  <Eye className="size-3" strokeWidth={2.2} />
+                  {BLOCK_LABELS[b]}
+                </button>
+              ))
+            )}
+            {hiddenBlocks.length ? (
+              <button type="button" onClick={resetDash} className="ml-auto text-xs text-copper">
+                Tout réafficher
+              </button>
+            ) : null}
           </div>
-        </section>
+        ) : null}
       </Reveal>
+
+      {visibleBlocks.length === 0 ? (
+        <Empty
+          title="Aucun bloc affiché"
+          body="Tous les blocs du tableau de bord sont masqués. Rouvrez « Personnaliser » pour en réafficher."
+          action={
+            <Button variant="primary" onClick={resetDash}>
+              Rétablir
+            </Button>
+          }
+        />
+      ) : (
+        <div className="gap-5 lg:columns-2">
+          {visibleBlocks.map((id, index) => (
+            <Block
+              key={id}
+              id={id}
+              label={BLOCK_LABELS[id]}
+              editing={editing}
+              index={index}
+              count={visibleBlocks.length}
+            >
+              {content[id]}
+            </Block>
+          ))}
+        </div>
+      )}
       <p className="text-xs text-mist">Date de référence {dayLabel(TODAY)}.</p>
     </div>
   );

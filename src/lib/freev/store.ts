@@ -51,6 +51,11 @@ export type Settings = {
   advice: boolean;
 };
 
+/** Dashboard blocks, in the order the user chose. */
+export const DASH_BLOCKS = ["schedule", "recent", "health", "accounts", "split", "watch"] as const;
+export type DashBlock = (typeof DASH_BLOCKS)[number];
+export const DASH_DEFAULT: DashBlock[] = [...DASH_BLOCKS];
+
 export type ProSettings = {
   tradeName: string;
   siret: string;
@@ -84,6 +89,9 @@ type State = {
   invoices: Invoice[];
   budgets: Record<string, number>;
   settings: Settings;
+  /** Dashboard composition: order of the visible blocks, and the hidden ones. */
+  dashOrder: DashBlock[];
+  dashHidden: DashBlock[];
   pro: ProSettings;
   notifs: Notif[];
   profile: Profile;
@@ -129,6 +137,10 @@ type State = {
   addPlan: (p: Omit<SmartPlan, "id">) => void;
   setBudgets: (b: Record<string, number>) => void;
   patchSettings: (p: Partial<Settings>) => void;
+  moveDashBlock: (id: DashBlock, dir: -1 | 1) => void;
+  placeDashBlock: (id: DashBlock, to: number) => void;
+  toggleDashBlock: (id: DashBlock) => void;
+  resetDash: () => void;
   patchPro: (p: Partial<ProSettings>) => void;
   patchProfile: (p: Partial<Profile>) => void;
   markNotifs: () => void;
@@ -197,6 +209,8 @@ export const useFreev = create<State>()(
         invoices: INVOICES,
         budgets: BUDGETS,
         settings: seedSettings,
+        dashOrder: DASH_DEFAULT,
+        dashHidden: [],
         pro: seedPro,
         notifs: NOTIFS,
         profile: { name: "Camille Morel", email: "camille@freev.app", defaultMode: "both" },
@@ -355,6 +369,36 @@ export const useFreev = create<State>()(
         addPlan: (p) => commit((s) => ({ plans: [{ ...p, id: uid("plan") }, ...s.plans] })),
         setBudgets: (budgets) => commit({ budgets, dialog: null }),
         patchSettings: (p) => commit((s) => ({ settings: { ...s.settings, ...p } })),
+        /*
+         * Layout changes are preferences, not ledger edits: they must not land
+         * in the undo history (an undo should never reshuffle the dashboard).
+         * They are still persisted, so the arrangement survives a reload.
+         */
+        moveDashBlock: (id, dir) =>
+          set((s) => {
+            const order = [...s.dashOrder];
+            const i = order.indexOf(id);
+            const j = i + dir;
+            if (i < 0 || j < 0 || j >= order.length) return {};
+            [order[i], order[j]] = [order[j], order[i]];
+            return { dashOrder: order };
+          }),
+        placeDashBlock: (id, to) =>
+          set((s) => {
+            const order = [...s.dashOrder];
+            const from = order.indexOf(id);
+            if (from < 0) return {};
+            order.splice(from, 1);
+            order.splice(Math.max(0, Math.min(to, order.length)), 0, id);
+            return { dashOrder: order };
+          }),
+        toggleDashBlock: (id) =>
+          set((s) => ({
+            dashHidden: s.dashHidden.includes(id)
+              ? s.dashHidden.filter((x) => x !== id)
+              : [...s.dashHidden, id],
+          })),
+        resetDash: () => set({ dashOrder: DASH_DEFAULT, dashHidden: [] }),
         patchPro: (p) => commit((s) => ({ pro: { ...s.pro, ...p } })),
         patchProfile: (p) => commit((s) => ({ profile: { ...s.profile, ...p } })),
         markNotifs: () => set((s) => ({ notifs: s.notifs.map((n) => ({ ...n, read: true })) })),
@@ -431,6 +475,8 @@ export const useFreev = create<State>()(
         invoices: s.invoices,
         budgets: s.budgets,
         settings: s.settings,
+        dashOrder: s.dashOrder,
+        dashHidden: s.dashHidden,
         pro: s.pro,
         notifs: s.notifs,
         profile: s.profile,
