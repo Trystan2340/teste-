@@ -475,12 +475,32 @@ export function Subscriptions() {
   const open = useFreev((s) => s.open);
   const active = subs.filter((s) => s.status === "actif" || s.status === "essai");
   const monthly = active.reduce((s, x) => s + x.price, 0);
+  const pausedCount = subs.filter((s) => s.status === "pause").length;
+  const month = useFreev((s) => s.month);
+  const todayDay = Number(TODAY.slice(8, 10));
+  /** "le 12" alone never said which month; resolve it against the month shown. */
+  const nextCharge = (renews: string) => {
+    const day = Number(renews.replace(/\D/g, ""));
+    const [y, m] = month.split("-").map(Number);
+    const sameMonth = month === TODAY.slice(0, 7) ? day >= todayDay : true;
+    const d = new Date(sameMonth ? y : m === 12 ? y + 1 : y, sameMonth ? m - 1 : m % 12, 1);
+    d.setDate(Math.min(day, 28));
+    return { day, label: format(d, "d MMM", { locale: fr }) };
+  };
+  // Soonest first: the next card to bill is the one you care about.
+  const ordered = [...subs].sort((a, b) => {
+    if (a.status === "résilié") return 1;
+    if (b.status === "résilié") return -1;
+    return nextCharge(a.renews).day - nextCharge(b.renews).day;
+  });
   return (
     <div className="space-y-6">
       <PageHead
         kicker="Centre"
         title="Abonnements"
-        lede={`${money(monthly)} partent encore chaque mois.`}
+        lede={`${money(monthly)} partent encore chaque mois${
+          pausedCount ? `, ${pausedCount} en pause` : ""
+        }.`}
         actions={
           <Button variant="primary" onClick={() => open({ name: "trial" })}>
             Nouvel essai
@@ -488,7 +508,7 @@ export function Subscriptions() {
         }
       />
       <div className="stagger grid gap-3 md:grid-cols-2">
-        {subs.map((s, index) => {
+        {ordered.map((s, index) => {
           const tone =
             s.status === "actif"
               ? { dot: "bg-sage", chip: "bg-sage/15 text-sage", label: "actif" }
@@ -507,7 +527,11 @@ export function Subscriptions() {
                 <div className="min-w-0">
                   <p className="truncate font-serif text-2xl tracking-tight">{s.name}</p>
                   <p className="mt-0.5 text-xs text-mist">
-                    Renouvellement le {s.renews.replace(" du mois", "")}
+                    {s.status === "résilié"
+                      ? "Résilié"
+                      : s.status === "pause"
+                        ? `En pause · reprend le ${nextCharge(s.renews).label}`
+                        : `Prochain prélèvement le ${nextCharge(s.renews).label}`}
                     {s.trialEnd
                       ? ` · essai jusqu’au ${format(parseISO(s.trialEnd), "d MMM", { locale: fr })}`
                       : ""}
@@ -613,31 +637,59 @@ export function Security() {
         title="Sécurité"
         lede="Mot de passe, seconde étape, sessions ouvertes."
       />
-      <form
-        className="max-w-md space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (password.length < 8) {
-            toast("Huit caractères minimum");
-            return;
-          }
-          setPassword("");
-          toast("Mot de passe mis à jour");
-        }}
-      >
-        <label className="block">
-          <span className="text-xs uppercase tracking-widest text-mist">Nouveau mot de passe</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
-          />
-        </label>
-        <Button type="submit" variant="primary">
-          Changer le mot de passe
-        </Button>
-      </form>
+      {/*
+        The password form was a bare label floating above a hairline, on a page
+        made only of hairlines, with the rule for "8 characters" printed nowhere
+        until you failed. It is now a real block that states the rule, makes the
+        requirement visible, and confirms when it is met.
+      */}
+      <section className="chrome-pill rounded-3xl bg-card p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-serif text-xl tracking-tight">Mot de passe</h2>
+            <p className="mt-1 text-sm text-mist">
+              Huit caractères minimum. Le changement s’applique aux prochaines connexions.
+            </p>
+          </div>
+          {password.length > 0 ? (
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
+                password.length >= 8 ? "bg-sage/15 text-sage" : "bg-clay/15 text-clay",
+              )}
+            >
+              {password.length >= 8 ? "valide" : `${8 - password.length} de plus`}
+            </span>
+          ) : null}
+        </div>
+        <form
+          className="mt-4 flex flex-col gap-3 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (password.length < 8) {
+              toast("Huit caractères minimum");
+              return;
+            }
+            setPassword("");
+            toast("Mot de passe mis à jour");
+          }}
+        >
+          <label className="flex-1">
+            <span className="sr-only">Nouveau mot de passe</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Nouveau mot de passe"
+              className="h-10 w-full rounded-full border border-transparent bg-card-2/70 px-4 text-sm outline-none transition-colors duration-[var(--dur-1)] placeholder:text-mist focus:border-copper/40"
+            />
+          </label>
+          <Button type="submit" variant="primary" disabled={password.length < 8}>
+            Changer le mot de passe
+          </Button>
+        </form>
+      </section>
       <div className="flex items-center justify-between border-y border-rule py-4">
         <div>
           <p className="text-sm">Validation en deux étapes</p>
@@ -647,22 +699,48 @@ export function Security() {
         </div>
         <Toggle on={twoFa} onChange={setTwoFa} label="Deux étapes" />
       </div>
-      <ul className="divide-y divide-rule">
-        {SESSIONS.filter((s) => !closed.includes(s.id)).map((s) => (
-          <li key={s.id} className="flex items-center justify-between py-3">
-            <span>
-              <span className="block text-sm">{s.device}</span>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 pt-2">
+        <h2 className="font-serif text-xl tracking-tight">Sessions ouvertes</h2>
+        <p className="text-xs text-mist">
+          {SESSIONS.filter((s) => !closed.includes(s.id)).length} appareil
+          {SESSIONS.filter((s) => !closed.includes(s.id)).length > 1 ? "s" : ""} connecté
+          {SESSIONS.filter((s) => !closed.includes(s.id)).length > 1 ? "s" : ""}
+        </p>
+      </div>
+      <ul className="stagger grid gap-2">
+        {SESSIONS.filter((s) => !closed.includes(s.id)).map((s, index) => (
+          <li
+            key={s.id}
+            {...stagger(index, 60)}
+            className="flex items-center justify-between gap-3 rounded-2xl bg-card-2/60 px-4 py-3"
+          >
+            <span className="min-w-0">
+              <span className="block truncate text-sm">{s.device}</span>
               <span className="text-xs uppercase tracking-widest text-mist">{s.when}</span>
             </span>
             {s.current ? (
               <span className="text-xs uppercase tracking-widest text-copper">Cet appareil</span>
             ) : (
-              <Button size="sm" onClick={() => close(s.id)}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  close(s.id);
+                  toast(`Session fermée · ${s.device.split(" · ")[0]}`);
+                }}
+              >
                 Fermer
               </Button>
             )}
           </li>
         ))}
+        {closed.length ? (
+          <li className="flex items-center justify-between px-4 py-2 text-xs text-mist">
+            <span>
+              {closed.length} session{closed.length > 1 ? "s" : ""} fermée
+              {closed.length > 1 ? "s" : ""} depuis cette visite
+            </span>
+          </li>
+        ) : null}
       </ul>
     </div>
   );
