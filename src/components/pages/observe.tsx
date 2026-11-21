@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Check, Clock, Flame, Repeat, TrendingUp } from "lucide-react";
 import { FlowChart, SplitChart } from "@/components/charts";
 import { CountUp } from "@/components/count-up";
+import { stagger } from "@/lib/stagger";
+import { Reveal } from "@/components/reveal";
 import { Amount, Button, PageHead, Stat } from "@/components/ui";
 import { flows, spentByCategory } from "@/lib/freev/calc";
 import { HISTORY, SCHEDULE, SERIES, SNAP, TODAY, inScope } from "@/lib/freev/data";
@@ -74,176 +76,186 @@ export function Dashboard() {
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-12">
-        <div className="space-y-5 lg:col-span-7">
-          <div className="chrome-pill rounded-3xl bg-card p-5">
-            <h2 className="font-serif text-2xl tracking-tight">Échéancier</h2>
-            <ul className="mt-3 divide-y divide-rule">
-              {SCHEDULE.map((item) => {
-                const passed = isCurrent && item.day < todayDay;
-                return (
-                  <li key={item.id} className="flex items-center justify-between gap-3 py-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span
-                        className={cn(
-                          "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium tabular-nums",
-                          passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
-                        )}
-                      >
-                        {item.day}
-                      </span>
-                      <span className="min-w-0">
-                        <p className="truncate text-sm">{item.label}</p>
-                        <p className="text-xs text-mist">
-                          {monthName}
-                          <span
-                            className={cn(
-                              "ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px]",
-                              passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
-                            )}
-                          >
-                            {passed ? (
-                              <Check className="size-2.5" strokeWidth={3} />
-                            ) : (
-                              <Clock className="size-2.5" />
-                            )}
-                            {passed ? "passé" : "à venir"}
-                          </span>
-                        </p>
-                      </span>
-                    </div>
-                    <Amount value={item.amount} />
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-          <div className="chrome-pill rounded-3xl bg-card p-5">
-            <div className="flex items-end justify-between">
-              <h2 className="font-serif text-2xl tracking-tight">Activité récente</h2>
-              <Link to="/transactions" className="text-sm text-copper">
-                Journal
-              </Link>
+      <Reveal>
+        <section className="grid gap-5 lg:grid-cols-12">
+          <div className="space-y-5 lg:col-span-7">
+            <div className="chrome-pill rounded-3xl bg-card p-5">
+              <h2 className="font-serif text-2xl tracking-tight">Échéancier</h2>
+              <ul className="stagger mt-3 divide-y divide-rule">
+                {SCHEDULE.map((item, index) => {
+                  const passed = isCurrent && item.day < todayDay;
+                  return (
+                    <li
+                      key={item.id}
+                      {...stagger(index)}
+                      className="flex items-center justify-between gap-3 py-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span
+                          className={cn(
+                            "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-medium tabular-nums",
+                            passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
+                          )}
+                        >
+                          {item.day}
+                        </span>
+                        <span className="min-w-0">
+                          <p className="truncate text-sm">{item.label}</p>
+                          <p className="text-xs text-mist">
+                            {monthName}
+                            <span
+                              className={cn(
+                                "ml-1.5 inline-flex items-center gap-1 rounded-full px-1.5 py-px text-[11px]",
+                                passed ? "bg-card-2 text-mist" : "bg-copper/10 text-copper",
+                              )}
+                            >
+                              {passed ? (
+                                <Check className="size-2.5" strokeWidth={3} />
+                              ) : (
+                                <Clock className="size-2.5" />
+                              )}
+                              {passed ? "passé" : "à venir"}
+                            </span>
+                          </p>
+                        </span>
+                      </div>
+                      <Amount value={item.amount} />
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-            <ul className="mt-3 divide-y divide-rule">
-              {recent.length === 0 ? (
-                <li className="py-6 text-sm text-mist">Aucune opération ce mois.</li>
-              ) : null}
-              {recent.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-3 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm">{t.label}</p>
-                    <p className="text-xs text-mist">
-                      {dayLabel(t.date)} · {t.category}
-                    </p>
-                  </div>
-                  <Amount value={t.amount} kind={t.kind} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <div className="space-y-5 lg:col-span-5">
-          <div className="chrome-pill rounded-3xl bg-card p-5">
-            <p className="text-xs font-medium tracking-wide text-mist">Santé du mois</p>
-            <p className="mt-1 font-serif text-6xl tabular-nums tracking-tight">{snap.health}</p>
-            <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">
-              Stable. Une charge d’énergie sort du rang, le reste suit le budget.
-            </p>
-          </div>
-          <div className="chrome-pill rounded-3xl bg-card p-5">
-            <div className="flex items-end justify-between gap-3">
-              <h2 className="font-serif text-2xl tracking-tight">Comptes</h2>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  className="text-sm text-copper"
-                  onClick={() => open({ name: "pick-account" })}
-                >
-                  Choisir
-                </button>
-                <button
-                  type="button"
-                  className="text-sm text-copper"
-                  onClick={() => open({ name: "accounts" })}
-                >
-                  Gérer
-                </button>
+            <div className="chrome-pill rounded-3xl bg-card p-5">
+              <div className="flex items-end justify-between">
+                <h2 className="font-serif text-2xl tracking-tight">Activité récente</h2>
+                <Link to="/transactions" className="text-sm text-copper">
+                  Journal
+                </Link>
               </div>
+              <ul className="stagger mt-3 divide-y divide-rule">
+                {recent.length === 0 ? (
+                  <li className="py-6 text-sm text-mist">Aucune opération ce mois.</li>
+                ) : null}
+                {recent.map((t, index) => (
+                  <li
+                    key={t.id}
+                    {...stagger(index, 120)}
+                    className="flex items-center justify-between gap-3 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm">{t.label}</p>
+                      <p className="text-xs text-mist">
+                        {dayLabel(t.date)} · {t.category}
+                      </p>
+                    </div>
+                    <Amount value={t.amount} kind={t.kind} />
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="mt-3 space-y-1">
-              {visible.map((a) => (
-                <li key={a.id}>
+          </div>
+          <div className="space-y-5 lg:col-span-5">
+            <div className="chrome-pill rounded-3xl bg-card p-5">
+              <p className="text-xs font-medium tracking-wide text-mist">Santé du mois</p>
+              <p className="mt-1 font-serif text-6xl tabular-nums tracking-tight">{snap.health}</p>
+              <p className="mt-2 max-w-xs text-sm leading-relaxed text-mist">
+                Stable. Une charge d’énergie sort du rang, le reste suit le budget.
+              </p>
+            </div>
+            <div className="chrome-pill rounded-3xl bg-card p-5">
+              <div className="flex items-end justify-between gap-3">
+                <h2 className="font-serif text-2xl tracking-tight">Comptes</h2>
+                <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => setActive(a.id)}
-                    title={a.id === activeId ? "Compte actif" : "Utiliser ce compte"}
-                    className={cn(
-                      "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors duration-[var(--dur-1)]",
-                      a.id === activeId ? "bg-card-2/80" : "hover:bg-card-2/50",
-                    )}
+                    className="text-sm text-copper"
+                    onClick={() => open({ name: "pick-account" })}
                   >
-                    <span
+                    Choisir
+                  </button>
+                  <button
+                    type="button"
+                    className="text-sm text-copper"
+                    onClick={() => open({ name: "accounts" })}
+                  >
+                    Gérer
+                  </button>
+                </div>
+              </div>
+              <ul className="stagger mt-3 space-y-1">
+                {visible.map((a, index) => (
+                  <li key={a.id} {...stagger(index, 60)}>
+                    <button
+                      type="button"
+                      onClick={() => setActive(a.id)}
+                      title={a.id === activeId ? "Compte actif" : "Utiliser ce compte"}
                       className={cn(
-                        "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold tracking-tight",
-                        a.kind === "pro"
-                          ? "bg-copper/12 text-copper"
-                          : a.kind === "epargne"
-                            ? "bg-sage/15 text-sage"
-                            : "bg-teal/15 text-teal",
+                        "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition-colors duration-[var(--dur-1)]",
+                        a.id === activeId ? "bg-card-2/80" : "hover:bg-card-2/50",
                       )}
                     >
-                      {a.bank.slice(0, 2).toUpperCase()}
+                      <span
+                        className={cn(
+                          "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold tracking-tight",
+                          a.kind === "pro"
+                            ? "bg-copper/12 text-copper"
+                            : a.kind === "epargne"
+                              ? "bg-sage/15 text-sage"
+                              : "bg-teal/15 text-teal",
+                        )}
+                      >
+                        {a.bank.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm">{a.name}</span>
+                        <span className="text-xs text-mist">{a.bank}</span>
+                      </span>
+                      <span className="shrink-0 text-sm tabular-nums">{money(a.balance)}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="chrome-pill rounded-3xl bg-card p-5">
+              <h2 className="font-serif text-2xl tracking-tight">Répartition des sorties</h2>
+              <SplitChart data={split} />
+            </div>
+            <div className="rounded-3xl bg-copper/8 p-5 ring-1 ring-copper/15">
+              <p className="text-xs font-medium tracking-wide text-copper">À surveiller</p>
+              <ul className="mt-3 space-y-2">
+                <li>
+                  <Link
+                    to="/analytique"
+                    className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
+                  >
+                    <Flame className="mt-0.5 size-4 shrink-0 text-clay" strokeWidth={1.8} />
+                    <span className="text-sm">
+                      EDF a augmenté de 18 % par rapport à la moyenne.
+                      <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
+                        Voir l’analytique →
+                      </span>
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm">{a.name}</span>
-                      <span className="text-xs text-mist">{a.bank}</span>
-                    </span>
-                    <span className="shrink-0 text-sm tabular-nums">{money(a.balance)}</span>
-                  </button>
+                  </Link>
                 </li>
-              ))}
-            </ul>
-          </div>
-          <div className="chrome-pill rounded-3xl bg-card p-5">
-            <h2 className="font-serif text-2xl tracking-tight">Répartition des sorties</h2>
-            <SplitChart data={split} />
-          </div>
-          <div className="rounded-3xl bg-copper/8 p-5 ring-1 ring-copper/15">
-            <p className="text-xs font-medium tracking-wide text-copper">À surveiller</p>
-            <ul className="mt-3 space-y-2">
-              <li>
-                <Link
-                  to="/analytique"
-                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
-                >
-                  <Flame className="mt-0.5 size-4 shrink-0 text-clay" strokeWidth={1.8} />
-                  <span className="text-sm">
-                    EDF a augmenté de 18 % par rapport à la moyenne.
-                    <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
-                      Voir l’analytique →
+                <li>
+                  <Link
+                    to="/abonnements"
+                    className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
+                  >
+                    <Repeat className="mt-0.5 size-4 shrink-0 text-copper" strokeWidth={1.8} />
+                    <span className="text-sm">
+                      2 abonnements se renouvellent cette semaine.
+                      <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
+                        Gérer les abonnements →
+                      </span>
                     </span>
-                  </span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/abonnements"
-                  className="group flex items-start gap-2 rounded-xl p-1 -m-1 transition-colors duration-[var(--dur-1)] hover:bg-copper/10"
-                >
-                  <Repeat className="mt-0.5 size-4 shrink-0 text-copper" strokeWidth={1.8} />
-                  <span className="text-sm">
-                    2 abonnements se renouvellent cette semaine.
-                    <span className="mt-0.5 block text-xs text-copper opacity-0 transition-opacity group-hover:opacity-100">
-                      Gérer les abonnements →
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            </ul>
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </Reveal>
       <p className="text-xs text-mist">Date de référence {dayLabel(TODAY)}.</p>
     </div>
   );
@@ -619,7 +631,7 @@ export function Report() {
           ))}
         </dl>
 
-        <div className="grid gap-8 px-6 py-8 md:px-10 lg:grid-cols-12">
+        <Reveal className="grid gap-8 px-6 py-8 md:px-10 lg:grid-cols-12">
           <section className="lg:col-span-7">
             <h3 className="font-serif text-2xl tracking-tight">Sorties par poste</h3>
             <ul className="mt-3 space-y-2">
@@ -670,7 +682,7 @@ export function Report() {
               </li>
             </ul>
           </aside>
-        </div>
+        </Reveal>
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-rule px-6 py-4 text-xs text-mist md:px-10">
           <span>FREEV · livre tenu localement · {profile.email}</span>

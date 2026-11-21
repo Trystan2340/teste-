@@ -9,6 +9,7 @@ import { HELP, SESSIONS } from "@/lib/freev/data";
 import { flows, spentByCategory } from "@/lib/freev/calc";
 import { useFreev, type ThemeChoice } from "@/lib/freev/store";
 import { cn, money } from "@/lib/utils";
+import { stagger } from "@/lib/stagger";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -36,104 +37,106 @@ export function Settings() {
         title="Paramètres"
         lede="Apparence, langue, alertes, et la porte vers l’activité professionnelle."
       />
-      <Row label="Apparence" hint="Encre sombre, papier clair, ou le réglage de l’appareil.">
-        <div className="flex flex-wrap gap-1 rounded-full bg-card-2 p-1">
-          {(
-            [
-              ["ink", "Sombre", Moon],
-              ["paper", "Clair", Sun],
-              ["system", "Système", Monitor],
-            ] as [ThemeChoice, string, typeof Moon][]
-          ).map(([id, label, Icon]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={theme === id}
-              onClick={() => setTheme(id)}
-              className={
-                theme === id
-                  ? "inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
-                  : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
-              }
+      <div className="stagger">
+        <Row label="Apparence" hint="Encre sombre, papier clair, ou le réglage de l’appareil.">
+          <div className="flex flex-wrap gap-1 rounded-full bg-card-2 p-1">
+            {(
+              [
+                ["ink", "Sombre", Moon],
+                ["paper", "Clair", Sun],
+                ["system", "Système", Monitor],
+              ] as [ThemeChoice, string, typeof Moon][]
+            ).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={theme === id}
+                onClick={() => setTheme(id)}
+                className={
+                  theme === id
+                    ? "inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
+                    : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
+                }
+              >
+                <Icon className="size-4" strokeWidth={1.8} />
+                {label}
+              </button>
+            ))}
+          </div>
+        </Row>
+        <Row label="Devise" hint="Le livre est tenu en euros.">
+          <p className="text-sm">EUR</p>
+        </Row>
+        <Row label="Langue">
+          <p className="text-sm">Français</p>
+        </Row>
+        <Row label="Début de semaine">
+          <p className="text-sm">Lundi</p>
+        </Row>
+        <Row label="Notifications e-mail">
+          <Toggle
+            on={settings.notifEmail}
+            onChange={(v) => patch({ notifEmail: v })}
+            label="E-mail"
+          />
+        </Row>
+        <Row label="Notifications push">
+          <Toggle on={settings.notifPush} onChange={(v) => patch({ notifPush: v })} label="Push" />
+        </Row>
+        <Row label="Récapitulatif hebdomadaire">
+          <Toggle
+            on={settings.notifWeekly}
+            onChange={(v) => patch({ notifWeekly: v })}
+            label="Hebdo"
+          />
+        </Row>
+        <Row label="Conseils" hint="Suggestions sur l’écran Smart.">
+          <Toggle on={settings.advice} onChange={(v) => patch({ advice: v })} label="Conseils" />
+        </Row>
+        <Row label="Comptes">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => open({ name: "accounts" })}>Gérer les comptes</Button>
+            <Button onClick={() => open({ name: "opening" })}>Solde de départ</Button>
+            <Button onClick={() => open({ name: "transfer" })}>Entre comptes</Button>
+          </div>
+        </Row>
+        <Row label="Professionnel" hint={profile.name}>
+          <Link to="/parametres-pro" className="text-xs uppercase tracking-widest text-copper">
+            Paramètres professionnels
+          </Link>
+        </Row>
+        <Row label="Données">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => {
+                const data = useFreev.getState();
+                const blob = new Blob(
+                  [
+                    JSON.stringify(
+                      { txs: data.txs, accounts: data.accounts, goals: data.goals },
+                      null,
+                      2,
+                    ),
+                  ],
+                  {
+                    type: "application/json",
+                  },
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "freev-export.json";
+                a.click();
+                URL.revokeObjectURL(url);
+                toast("Export téléchargé");
+              }}
             >
-              <Icon className="size-4" strokeWidth={1.8} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </Row>
-      <Row label="Devise" hint="Le livre est tenu en euros.">
-        <p className="text-sm">EUR</p>
-      </Row>
-      <Row label="Langue">
-        <p className="text-sm">Français</p>
-      </Row>
-      <Row label="Début de semaine">
-        <p className="text-sm">Lundi</p>
-      </Row>
-      <Row label="Notifications e-mail">
-        <Toggle
-          on={settings.notifEmail}
-          onChange={(v) => patch({ notifEmail: v })}
-          label="E-mail"
-        />
-      </Row>
-      <Row label="Notifications push">
-        <Toggle on={settings.notifPush} onChange={(v) => patch({ notifPush: v })} label="Push" />
-      </Row>
-      <Row label="Récapitulatif hebdomadaire">
-        <Toggle
-          on={settings.notifWeekly}
-          onChange={(v) => patch({ notifWeekly: v })}
-          label="Hebdo"
-        />
-      </Row>
-      <Row label="Conseils" hint="Suggestions sur l’écran Smart.">
-        <Toggle on={settings.advice} onChange={(v) => patch({ advice: v })} label="Conseils" />
-      </Row>
-      <Row label="Comptes">
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => open({ name: "accounts" })}>Gérer les comptes</Button>
-          <Button onClick={() => open({ name: "opening" })}>Solde de départ</Button>
-          <Button onClick={() => open({ name: "transfer" })}>Entre comptes</Button>
-        </div>
-      </Row>
-      <Row label="Professionnel" hint={profile.name}>
-        <Link to="/parametres-pro" className="text-xs uppercase tracking-widest text-copper">
-          Paramètres professionnels
-        </Link>
-      </Row>
-      <Row label="Données">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => {
-              const data = useFreev.getState();
-              const blob = new Blob(
-                [
-                  JSON.stringify(
-                    { txs: data.txs, accounts: data.accounts, goals: data.goals },
-                    null,
-                    2,
-                  ),
-                ],
-                {
-                  type: "application/json",
-                },
-              );
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "freev-export.json";
-              a.click();
-              URL.revokeObjectURL(url);
-              toast("Export téléchargé");
-            }}
-          >
-            Exporter
-          </Button>
-          <Button onClick={() => open({ name: "wipe" })}>Supprimer</Button>
-        </div>
-      </Row>
+              Exporter
+            </Button>
+            <Button onClick={() => open({ name: "wipe" })}>Supprimer</Button>
+          </div>
+        </Row>
+      </div>
     </div>
   );
 }
@@ -468,8 +471,8 @@ export function Subscriptions() {
           </Button>
         }
       />
-      <div className="grid gap-3 md:grid-cols-2">
-        {subs.map((s) => {
+      <div className="stagger grid gap-3 md:grid-cols-2">
+        {subs.map((s, index) => {
           const tone =
             s.status === "actif"
               ? { dot: "bg-sage", chip: "bg-sage/15 text-sage", label: "actif" }
@@ -479,7 +482,11 @@ export function Subscriptions() {
                   ? { dot: "bg-mist", chip: "bg-card-2 text-mist", label: "en pause" }
                   : { dot: "bg-clay", chip: "bg-clay/15 text-clay", label: "résilié" };
           return (
-            <div key={s.id} className="chrome-pill flex flex-col rounded-3xl bg-card p-5">
+            <div
+              key={s.id}
+              {...stagger(index)}
+              className="chrome-pill flex flex-col rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-serif text-2xl tracking-tight">{s.name}</p>

@@ -7,6 +7,7 @@ import { useConfirmAction } from "@/components/confirm";
 import { SCHEDULE } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
 import { cn, money } from "@/lib/utils";
+import { stagger } from "@/lib/stagger";
 
 export function Planner() {
   const [cursor, setCursor] = useState(new Date(2026, 10, 1));
@@ -238,13 +239,17 @@ export function Savings() {
           </Button>
         }
       />
-      <ul className="grid gap-3 md:grid-cols-2">
-        {goals.map((g) => {
+      <ul className="stagger grid gap-3 md:grid-cols-2">
+        {goals.map((g, index) => {
           const ratio = g.target ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
           const done = ratio >= 100;
           const left = Math.max(g.target - g.current, 0);
           return (
-            <li key={g.id} className="chrome-pill flex flex-col rounded-3xl bg-card p-5">
+            <li
+              key={g.id}
+              {...stagger(index)}
+              className="chrome-pill flex flex-col rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-serif text-2xl tracking-tight">{g.name}</p>
@@ -335,11 +340,15 @@ export function Debts() {
           <p className="mt-1 text-xs text-mist">par mois, toutes dettes confondues</p>
         </div>
       </div>
-      <ul className="space-y-3">
-        {debts.map((d) => {
+      <ul className="stagger space-y-3">
+        {debts.map((d, index) => {
           const months = d.monthly > 0 ? Math.ceil(d.remaining / d.monthly) : null;
           return (
-            <li key={d.id} className="chrome-pill rounded-3xl bg-card p-5">
+            <li
+              key={d.id}
+              {...stagger(index, 60)}
+              className="chrome-pill rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{d.name}</p>

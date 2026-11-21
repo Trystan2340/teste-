@@ -44,7 +44,23 @@ export const Route = createRootRoute({
         <PreviewHostBridge />
         <AuthProvider>
           <Outlet />
-          <Toaster position="bottom-right" />
+          <Toaster
+            position="bottom-right"
+            gap={10}
+            offset={18}
+            toastOptions={{
+              // Match the app: floating card, soft radius, theme tokens.
+              style: {
+                background: "var(--card)",
+                color: "var(--ink)",
+                border: "1px solid var(--rule)",
+                borderRadius: "1rem",
+                boxShadow: "var(--float)",
+                fontFamily: "var(--font-sans)",
+              },
+              className: "freev-toast",
+            }}
+          />
         </AuthProvider>
         <Scripts />
       </body>

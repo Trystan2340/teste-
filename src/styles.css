@@ -235,7 +235,48 @@
   }
 }
 
-/* Cross-route fade: native View Transitions drive it, no JS shim. */
+/* Scroll reveal wrapper (src/components/reveal.tsx). */
+/* Toasts: slide up from the bottom edge instead of popping in. */
+.freev-toast {
+  animation: toast-in var(--dur-3) var(--ease-soft) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Scroll reveal (see src/components/reveal.tsx): the component decides when to
+ * hide, so with JS off nothing is ever hidden. `both` keeps the start frame
+ * during the delay, hence no flash before the animation begins.
+ */
+.reveal-pending {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal {
+  animation: rise var(--dur-4) var(--ease-soft) both;
+}
+
+/*
+ * List choreography. Children arrive one after another; the delay itself is
+ * inline (see src/lib/stagger.ts) so a long list can cap it.
+ */
+.stagger > * {
+  animation: rise var(--dur-3) var(--ease-soft) both;
+}
+
+/*
+ * Cross-route fade: native View Transitions drive it, no JS shim.
+ */
 ::view-transition-old(root) {
   animation: fade var(--dur-2) var(--ease-in-out-soft) both reverse;
 }
