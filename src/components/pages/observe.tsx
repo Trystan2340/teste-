@@ -564,6 +564,7 @@ export function Analytics() {
   const flow = monthTotals(txs, mode, month);
   const before = monthTotals(txs, mode, previousMonth(month));
   const split = spentByCategory(txs, mode, month);
+  const categoryTotal = split.reduce((sum, item) => sum + item.value, 0);
   const data = HISTORY.filter((item) => item.id <= month)
     .reverse()
     .slice(-span)
@@ -609,14 +610,14 @@ export function Analytics() {
         <Stat
           label="Entrées"
           value={money(flow.inn)}
-          note={innDelta === null ? "—" : pct(innDelta)}
+          note={innDelta === null ? "—" : `${pct(innDelta)} vs mois précédent`}
           tone="sage"
         />
         <Stat
           label="Sorties"
           value={money(flow.out)}
-          note={outDelta === null ? "—" : pct(outDelta)}
-          tone="sage"
+          note={outDelta === null ? "—" : `${pct(outDelta)} vs mois précédent`}
+          tone="clay"
         />
         <Stat label="Épargne nette" value={money(flow.rest)} note={monthShortName} />
         <Stat
@@ -635,12 +636,30 @@ export function Analytics() {
         <div>
           <h2 className="font-serif text-2xl">Catégories</h2>
           <ul className="mt-4 divide-y divide-rule border-y border-rule">
-            {split.map((c) => (
-              <li key={c.name} className="flex items-center justify-between py-3 text-sm">
-                <span>{c.name}</span>
-                <span className="tabular-nums">{money(c.value)}</span>
-              </li>
-            ))}
+            {split.map((c) => {
+              const share = categoryTotal > 0 ? (c.value / categoryTotal) * 100 : 0;
+              return (
+                <li key={c.name} className="py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="truncate">{c.name}</span>
+                    <span className="shrink-0 tabular-nums">{money(c.value)}</span>
+                  </div>
+                  <div
+                    className="mt-2 h-1.5 overflow-hidden rounded-full bg-card-2"
+                    role="progressbar"
+                    aria-label={`${c.name}, part des sorties`}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(share)}
+                  >
+                    <div
+                      className="h-full rounded-full bg-copper/80 transition-[width] duration-[var(--dur-3)]"
+                      style={{ width: `${share}%` }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
         <div>
