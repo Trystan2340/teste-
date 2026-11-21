@@ -2,7 +2,7 @@ import { eachDayOfInterval, endOfMonth, format, getDay, parseISO, startOfMonth }
 import { fr } from "date-fns/locale";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Amount, Button, InlineInput, PageHead } from "@/components/ui";
+import { Amount, Button, Empty, InlineInput, PageHead } from "@/components/ui";
 import { useConfirmAction } from "@/components/confirm";
 import { SCHEDULE, TODAY } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
@@ -166,18 +166,22 @@ export function Smart() {
         title="Smart"
         lede="Des règles simples qui déplacent l’argent avant que vous ayez à y penser."
       />
-      <ul className="divide-y divide-rule border-y border-rule">
-        {plans.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+      <ul className="stagger divide-y divide-rule border-y border-rule">
+        {plans.map((plan, index) => (
+          <li
+            key={plan.id}
+            {...stagger(index)}
+            className="flex flex-wrap items-center justify-between gap-3 py-4"
+          >
             <div>
-              <p className="text-sm">{p.name}</p>
-              <p className="text-sm text-mist">{p.detail}</p>
+              <p className="text-sm">{plan.name}</p>
+              <p className="text-sm text-mist">{plan.detail}</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs uppercase tracking-widest text-mist">{p.status}</span>
-              <span className="tabular-nums">{money(p.amount)}</span>
-              <Button size="sm" onClick={() => toggle(p.id)}>
-                {p.status === "actif" ? "Pause" : "Activer"}
+              <span className="text-xs uppercase tracking-widest text-mist">{plan.status}</span>
+              <span className="tabular-nums">{money(plan.amount)}</span>
+              <Button size="sm" onClick={() => toggle(plan.id)}>
+                {plan.status === "actif" ? "Pause" : "Activer"}
               </Button>
             </div>
           </li>
@@ -319,6 +323,12 @@ export function Savings() {
           );
         })}
       </ul>
+      {goals.length === 0 ? (
+        <Empty
+          title="Aucun objectif pour l’instant"
+          body="Créez-en un pour suivre ce que vous mettez de côté, compte par compte."
+        />
+      ) : null}
     </div>
   );
 }
@@ -399,6 +409,12 @@ export function Debts() {
           );
         })}
       </ul>
+      {debts.length === 0 ? (
+        <Empty
+          title="Aucune dette en cours"
+          body="Rien à rembourser : ajoutez un crédit seulement s’il en reste un."
+        />
+      ) : null}
     </div>
   );
 }

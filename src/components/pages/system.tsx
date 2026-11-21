@@ -5,6 +5,7 @@ import { FileText, Flame, Monitor, Moon, Repeat, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, InlineInput, PageHead, Toggle } from "@/components/ui";
+import { CountUp } from "@/components/count-up";
 import { HELP, SESSIONS, TODAY } from "@/lib/freev/data";
 import { monthTotals, spentByCategory } from "@/lib/freev/calc";
 import { useFreev, type ThemeChoice } from "@/lib/freev/store";
@@ -553,23 +554,23 @@ export function Wealth() {
         title="Patrimoine"
         lede="Liquidités, objectifs, dettes. Le net est la seule ligne qui compte."
       />
-      <p className="font-serif text-5xl tabular-nums">{money(liquid - debt)}</p>
+      <p className="font-serif text-5xl tabular-nums">
+        <CountUp value={liquid - debt} />
+      </p>
       <p className="text-sm text-mist">
         Patrimoine net · liquidités moins dettes. Les objectifs sont déjà dans les livrets.
       </p>
-      <dl className="grid gap-4 border-y border-rule sm:grid-cols-3">
-        <div className="py-4">
-          <dt className="text-xs uppercase tracking-widest text-mist">Liquidités</dt>
-          <dd className="font-serif text-3xl">{money(liquid)}</dd>
-        </div>
-        <div className="py-4">
-          <dt className="text-xs uppercase tracking-widest text-mist">Dans les objectifs</dt>
-          <dd className="font-serif text-3xl">{money(goalsSum)}</dd>
-        </div>
-        <div className="py-4">
-          <dt className="text-xs uppercase tracking-widest text-mist">Dettes</dt>
-          <dd className="font-serif text-3xl">{money(debt)}</dd>
-        </div>
+      <dl className="stagger grid gap-4 border-y border-rule sm:grid-cols-3">
+        {[
+          { label: "Liquidités", value: liquid },
+          { label: "Dans les objectifs", value: goalsSum },
+          { label: "Dettes", value: debt },
+        ].map((row, index) => (
+          <div key={row.label} {...stagger(index, 80)} className="py-4">
+            <dt className="text-xs uppercase tracking-widest text-mist">{row.label}</dt>
+            <dd className="font-serif text-3xl tabular-nums">{money(row.value)}</dd>
+          </div>
+        ))}
       </dl>
       <div className="flex flex-wrap gap-4 text-xs uppercase tracking-widest">
         <Link to="/epargne" className="text-copper">
