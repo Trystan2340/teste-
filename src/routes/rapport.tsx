@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { Shell } from "@/components/shell";
-import { Report } from "@/components/pages/observe";
+
+const Report = lazyRouteComponent(() => import("@/components/pages/observe"), "Report");
 
 export const Route = createFileRoute("/rapport")({
   head: () => ({ meta: [{ title: "Rapport — FREEV" }] }),

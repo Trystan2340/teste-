@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { Shell } from "@/components/shell";
-import { ProSettings } from "@/components/pages/system";
+
+const ProSettings = lazyRouteComponent(() => import("@/components/pages/system"), "ProSettings");
 
 export const Route = createFileRoute("/parametres-pro")({
   head: () => ({ meta: [{ title: "Paramètres pro — FREEV" }] }),
