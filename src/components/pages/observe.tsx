@@ -606,7 +606,7 @@ export function Analytics() {
           </div>
         }
       />
-      <section className="grid border-y border-rule sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid divide-y divide-rule border-y border-rule sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
         <Stat
           label="Entrées"
           value={money(flow.inn)}

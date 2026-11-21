@@ -488,6 +488,7 @@ export function Shell({ children }: { children: ReactNode }) {
                     type="button"
                     role="tab"
                     aria-selected={on}
+                    aria-label={m.label}
                     ref={on ? activeModeRef : undefined}
                     onClick={() => setMode(m.id)}
                     className={cn(
@@ -507,6 +508,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="ml-auto flex shrink-0 items-center gap-1 max-xl:basis-full max-xl:justify-end">
               <button
                 type="button"
+                aria-label="Rechercher"
                 onClick={() => setSearch(true)}
                 className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-2.5 text-sm text-mist transition-colors hover:bg-card-2 hover:text-ink"
               >

@@ -183,7 +183,7 @@ export function Stat({
   tone?: "sage" | "clay" | "mist";
 }) {
   return (
-    <div className="px-4 py-5 first:pl-0 last:pr-0">
+    <div className="px-3 py-5 sm:px-4">
       <p className="text-xs uppercase tracking-widest text-mist">{label}</p>
       <p className="mt-2 font-serif text-3xl tabular-nums text-ink">{value}</p>
       {note ? (
