@@ -54,7 +54,7 @@ export function Settings() {
                 onClick={() => setTheme(id)}
                 className={
                   theme === id
-                    ? "inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
+                    ? "pill-on inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
                     : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
                 }
               >

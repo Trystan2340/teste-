@@ -429,7 +429,9 @@ export function Shell({ children }: { children: ReactNode }) {
                     onClick={() => setMode(m.id)}
                     className={cn(
                       "inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors sm:px-3",
-                      on ? "bg-copper text-copper-ink shadow-float" : "text-mist hover:text-ink",
+                      on
+                        ? "pill-on bg-copper text-copper-ink shadow-float"
+                        : "text-mist hover:text-ink",
                     )}
                   >
                     <Icon className="size-3.5" strokeWidth={1.8} />

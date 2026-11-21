@@ -128,7 +128,7 @@ function KindSwitch({ value, onChange }: { value: TxKind; onChange: (k: TxKind) 
           onClick={() => onChange(o.id)}
           className={
             value === o.id
-              ? "h-9 flex-1 rounded-full bg-copper text-sm font-medium text-copper-ink shadow-float"
+              ? "pill-on h-9 flex-1 rounded-full bg-copper text-sm font-medium text-copper-ink shadow-float"
               : "h-9 flex-1 rounded-full text-sm text-mist transition-colors hover:text-ink"
           }
         >

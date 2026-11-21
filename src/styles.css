@@ -257,6 +257,25 @@
  * hide, so with JS off nothing is ever hidden. `both` keeps the start frame
  * during the delay, hence no flash before the animation begins.
  */
+/*
+ * Segmented controls: the selected pill lands with a small settle instead of
+ * simply switching colour, so the eye can follow what moved.
+ */
+.pill-on {
+  animation: pill-settle var(--dur-2) var(--ease-soft) both;
+}
+
+@keyframes pill-settle {
+  from {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .reveal-pending {
   opacity: 0;
   transform: translateY(14px);

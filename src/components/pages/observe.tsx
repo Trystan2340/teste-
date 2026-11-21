@@ -320,7 +320,7 @@ export function Analytics() {
                 onClick={() => setSpan(n)}
                 className={
                   span === n
-                    ? "h-9 rounded-full bg-copper px-4 text-sm font-medium text-copper-ink shadow-float"
+                    ? "pill-on h-9 rounded-full bg-copper px-4 text-sm font-medium text-copper-ink shadow-float"
                     : "h-9 rounded-full px-4 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
                 }
               >
