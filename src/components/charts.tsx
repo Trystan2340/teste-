@@ -48,7 +48,7 @@ export function FlowChart({ data }: { data: { m: string; inn: number; out: numbe
             Sorties
           </span>
         </div>
-        <span className="text-xs text-mist">six derniers mois</span>
+        <span className="text-xs text-mist">{data.length} derniers mois affichés</span>
       </figcaption>
 
       <div className="mt-5 flex gap-3">

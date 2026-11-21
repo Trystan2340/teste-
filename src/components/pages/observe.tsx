@@ -20,7 +20,7 @@ import { stagger } from "@/lib/stagger";
 import { Reveal } from "@/components/reveal";
 import { Amount, Button, Empty, PageHead, Stat } from "@/components/ui";
 import { change, monthTotals, previousMonth, spentByCategory } from "@/lib/freev/calc";
-import { SCHEDULE, SERIES, SNAP, TODAY, inScope } from "@/lib/freev/data";
+import { HISTORY, SCHEDULE, SNAP, TODAY, inScope } from "@/lib/freev/data";
 import { type DashBlock, useFreev } from "@/lib/freev/store";
 import { dayLabel, money, monthName, pct, cn } from "@/lib/utils";
 
@@ -564,7 +564,10 @@ export function Analytics() {
   const flow = monthTotals(txs, mode, month);
   const before = monthTotals(txs, mode, previousMonth(month));
   const split = spentByCategory(txs, mode, month);
-  const data = SERIES.slice(-span);
+  const data = HISTORY.filter((item) => item.id <= month)
+    .reverse()
+    .slice(-span)
+    .map((item) => ({ m: monthName(item.id, "short"), inn: item.inn, out: item.out }));
   // Headline movement, computed from the two months on screen.
   const innDelta = change(flow.inn, before.inn);
   const outDelta = change(flow.out, before.out);
@@ -946,7 +949,7 @@ export function Report() {
               </>
             )}
             . La santé du mois reste à{" "}
-            <strong className="font-medium text-ink">{SNAP[mode].health}</strong>.
+            <strong className="font-medium text-ink">{SNAP[mode].health} sur 100</strong>.
           </p>
         </header>
 
