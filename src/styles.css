@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/*
+ * Self-hosted type. Same two families, now served from the app instead of
+ * fonts.gstatic.com: no third-party DNS/TLS handshake before first paint, no
+ * request fan-out on a cold cache, and the files work offline. Subsets are
+ * limited to latin + latin-ext (the app is French); the browser only fetches a
+ * file when a glyph in its range is actually used.
+ */
+@import "@fontsource-variable/outfit/wght.css";
+@import "@fontsource-variable/fraunces/opsz.css";
+
 :root {
   --canvas: #10141c;
   --card: #171c26;
@@ -65,8 +75,8 @@
 }
 
 @theme inline {
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces Variable", "Fraunces", ui-serif, Georgia, serif;
   --color-canvas: var(--canvas);
   --color-card: var(--card);
   --color-card-2: var(--card-2);

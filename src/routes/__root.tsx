@@ -3,6 +3,10 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import appCss from "../styles.css?url";
+// The two latin faces behind nearly every glyph: preload them so the first
+// paint is not waiting on a stylesheet round-trip to discover them.
+import frauncesUrl from "@fontsource-variable/fraunces/files/fraunces-latin-opsz-normal.woff2?url";
+import outfitUrl from "@fontsource-variable/outfit/files/outfit-latin-wght-normal.woff2?url";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -16,14 +20,16 @@ export const Route = createRootRoute({
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      // The two families are the whole identity: fetch the CSS early, and the
-      // font files by the time the first paint asks for them.
+      // The two families are the whole identity: fetch the stylesheet (which
+      // now carries their @font-face rules) as early as possible.
       { rel: "preload", href: appCss, as: "style" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      { rel: "preload", href: outfitUrl, as: "font", type: "font/woff2", crossOrigin: "anonymous" },
       {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,620;1,9..144,500&family=Outfit:wght@400;500;600&display=swap",
+        rel: "preload",
+        href: frauncesUrl,
+        as: "font",
+        type: "font/woff2",
+        crossOrigin: "anonymous",
       },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
