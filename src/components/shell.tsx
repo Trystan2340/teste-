@@ -160,6 +160,29 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
   const [more, setMore] = useState(false);
   const moreOn = MORE.some((item) => isActive(path, item.to));
 
+  // Same manners as the month picker: close on an outside click or Escape,
+  // and drop the menu once the route changes.
+  useEffect(() => {
+    if (!more) return;
+    const onDown = (e: PointerEvent) => {
+      const panel = document.querySelector("[data-more-menu]");
+      const target = e.target as Node | null;
+      const onToggle = (e.target as Element | null)?.closest?.("[data-more-toggle]");
+      if (panel && target && !panel.contains(target) && !onToggle) setMore(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMore(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [more]);
+
+  useEffect(() => setMore(false), [path]);
+
   return (
     <div className="grain relative flex h-full flex-col items-center border-r border-rule/70 bg-card/75 py-3 backdrop-blur-md">
       <Link
@@ -173,6 +196,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
       <div className="mt-3 flex gap-1">
         <button
           type="button"
+          data-more-toggle
           aria-label="Toutes les pages"
           aria-expanded={more}
           title="Toutes les pages"
@@ -296,7 +320,10 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {more ? (
-        <div className="fixed top-16 left-24 z-40 w-56 rounded-2xl border border-rule bg-card p-2 shadow-lift">
+        <div
+          data-more-menu
+          className="fixed top-16 left-24 z-40 w-56 rounded-2xl border border-rule bg-card p-2 shadow-lift"
+        >
           <p className="px-2 py-1 text-xs text-mist">Toutes les pages</p>
           <ul>
             {MORE.map((item) => (
@@ -373,6 +400,28 @@ export function Shell({ children }: { children: ReactNode }) {
     setYear(Number(month.slice(0, 4)));
   }, [month]);
 
+  // The month picker behaved like a modal without the manners: it stayed open
+  // under a click elsewhere on the page, and Escape did nothing. The panel is
+  // the first `[data-month-picker]` inside the header wrapper.
+  useEffect(() => {
+    if (!cal) return;
+    const onDown = (e: PointerEvent) => {
+      const panel = document.querySelector("[data-month-picker]");
+      const target = e.target as Node | null;
+      const onToggle = (e.target as Element | null)?.closest?.("[data-month-toggle]");
+      if (panel && target && !panel.contains(target) && !onToggle) setCal(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCal(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [cal]);
+
   return (
     <div className="flex h-dvh overflow-hidden text-ink">
       <aside className="w-20 shrink-0">
@@ -395,6 +444,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
               <button
                 type="button"
+                data-month-toggle
                 aria-label="Choisir un mois"
                 aria-expanded={cal}
                 className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-ink"
@@ -480,7 +530,10 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
           </header>
           {cal ? (
-            <div className="absolute top-16 left-3 z-30 w-64 rounded-2xl border border-rule bg-card p-3 shadow-lift md:left-4">
+            <div
+              data-month-picker
+              className="absolute top-16 left-3 z-30 w-64 rounded-2xl border border-rule bg-card p-3 shadow-lift md:left-4"
+            >
               <div className="flex items-center justify-between">
                 <button
                   type="button"
