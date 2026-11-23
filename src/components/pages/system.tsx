@@ -5,10 +5,12 @@ import { FileText, Flame, Monitor, Moon, Repeat, Sun } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button, InlineInput, PageHead, Toggle } from "@/components/ui";
-import { HELP, SESSIONS } from "@/lib/freev/data";
-import { flows, spentByCategory } from "@/lib/freev/calc";
+import { CountUp } from "@/components/count-up";
+import { HELP, SESSIONS, TODAY } from "@/lib/freev/data";
+import { monthTotals, spentByCategory } from "@/lib/freev/calc";
 import { useFreev, type ThemeChoice } from "@/lib/freev/store";
-import { cn, money } from "@/lib/utils";
+import { cn, money, monthName } from "@/lib/utils";
+import { stagger } from "@/lib/stagger";
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -17,7 +19,12 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
         <p className="text-sm">{label}</p>
         {hint ? <p className="text-sm text-mist">{hint}</p> : null}
       </div>
-      <div className="md:col-span-7">{children}</div>
+      {/*
+        Control cluster: on a wide row the control belongs next to the label it
+        describes, not floating at the start of an empty 7-column track. Rows
+        with buttons or a segmented control keep their own layout.
+      */}
+      <div className="md:col-span-7 md:justify-self-end">{children}</div>
     </div>
   );
 }
@@ -36,104 +43,106 @@ export function Settings() {
         title="Paramètres"
         lede="Apparence, langue, alertes, et la porte vers l’activité professionnelle."
       />
-      <Row label="Apparence" hint="Encre sombre, papier clair, ou le réglage de l’appareil.">
-        <div className="flex flex-wrap gap-1 rounded-full bg-card-2 p-1">
-          {(
-            [
-              ["ink", "Sombre", Moon],
-              ["paper", "Clair", Sun],
-              ["system", "Système", Monitor],
-            ] as [ThemeChoice, string, typeof Moon][]
-          ).map(([id, label, Icon]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={theme === id}
-              onClick={() => setTheme(id)}
-              className={
-                theme === id
-                  ? "inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
-                  : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors hover:text-ink"
-              }
+      <div className="stagger">
+        <Row label="Apparence" hint="Encre sombre, papier clair, ou le réglage de l’appareil.">
+          <div className="flex flex-wrap gap-1 rounded-full bg-card-2 p-1">
+            {(
+              [
+                ["ink", "Sombre", Moon],
+                ["paper", "Clair", Sun],
+                ["system", "Système", Monitor],
+              ] as [ThemeChoice, string, typeof Moon][]
+            ).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={theme === id}
+                onClick={() => setTheme(id)}
+                className={
+                  theme === id
+                    ? "pill-on inline-flex h-9 items-center gap-1.5 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
+                    : "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink"
+                }
+              >
+                <Icon className="size-4" strokeWidth={1.8} />
+                {label}
+              </button>
+            ))}
+          </div>
+        </Row>
+        <Row label="Devise" hint="Le livre est tenu en euros.">
+          <p className="text-sm">EUR</p>
+        </Row>
+        <Row label="Langue">
+          <p className="text-sm">Français</p>
+        </Row>
+        <Row label="Début de semaine">
+          <p className="text-sm">Lundi</p>
+        </Row>
+        <Row label="Notifications e-mail">
+          <Toggle
+            on={settings.notifEmail}
+            onChange={(v) => patch({ notifEmail: v })}
+            label="E-mail"
+          />
+        </Row>
+        <Row label="Notifications push">
+          <Toggle on={settings.notifPush} onChange={(v) => patch({ notifPush: v })} label="Push" />
+        </Row>
+        <Row label="Récapitulatif hebdomadaire">
+          <Toggle
+            on={settings.notifWeekly}
+            onChange={(v) => patch({ notifWeekly: v })}
+            label="Hebdo"
+          />
+        </Row>
+        <Row label="Conseils" hint="Suggestions sur l’écran Smart.">
+          <Toggle on={settings.advice} onChange={(v) => patch({ advice: v })} label="Conseils" />
+        </Row>
+        <Row label="Comptes">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => open({ name: "accounts" })}>Gérer les comptes</Button>
+            <Button onClick={() => open({ name: "opening" })}>Solde de départ</Button>
+            <Button onClick={() => open({ name: "transfer" })}>Entre comptes</Button>
+          </div>
+        </Row>
+        <Row label="Professionnel" hint={profile.name}>
+          <Link to="/parametres-pro" className="text-xs uppercase tracking-widest text-copper">
+            Paramètres professionnels
+          </Link>
+        </Row>
+        <Row label="Données">
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => {
+                const data = useFreev.getState();
+                const blob = new Blob(
+                  [
+                    JSON.stringify(
+                      { txs: data.txs, accounts: data.accounts, goals: data.goals },
+                      null,
+                      2,
+                    ),
+                  ],
+                  {
+                    type: "application/json",
+                  },
+                );
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "freev-export.json";
+                a.click();
+                URL.revokeObjectURL(url);
+                toast("Export téléchargé");
+              }}
             >
-              <Icon className="size-4" strokeWidth={1.8} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </Row>
-      <Row label="Devise" hint="Le livre est tenu en euros.">
-        <p className="text-sm">EUR</p>
-      </Row>
-      <Row label="Langue">
-        <p className="text-sm">Français</p>
-      </Row>
-      <Row label="Début de semaine">
-        <p className="text-sm">Lundi</p>
-      </Row>
-      <Row label="Notifications e-mail">
-        <Toggle
-          on={settings.notifEmail}
-          onChange={(v) => patch({ notifEmail: v })}
-          label="E-mail"
-        />
-      </Row>
-      <Row label="Notifications push">
-        <Toggle on={settings.notifPush} onChange={(v) => patch({ notifPush: v })} label="Push" />
-      </Row>
-      <Row label="Récapitulatif hebdomadaire">
-        <Toggle
-          on={settings.notifWeekly}
-          onChange={(v) => patch({ notifWeekly: v })}
-          label="Hebdo"
-        />
-      </Row>
-      <Row label="Conseils" hint="Suggestions sur l’écran Smart.">
-        <Toggle on={settings.advice} onChange={(v) => patch({ advice: v })} label="Conseils" />
-      </Row>
-      <Row label="Comptes">
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={() => open({ name: "accounts" })}>Gérer les comptes</Button>
-          <Button onClick={() => open({ name: "opening" })}>Solde de départ</Button>
-          <Button onClick={() => open({ name: "transfer" })}>Entre comptes</Button>
-        </div>
-      </Row>
-      <Row label="Professionnel" hint={profile.name}>
-        <Link to="/parametres-pro" className="text-xs uppercase tracking-widest text-copper">
-          Paramètres professionnels
-        </Link>
-      </Row>
-      <Row label="Données">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            onClick={() => {
-              const data = useFreev.getState();
-              const blob = new Blob(
-                [
-                  JSON.stringify(
-                    { txs: data.txs, accounts: data.accounts, goals: data.goals },
-                    null,
-                    2,
-                  ),
-                ],
-                {
-                  type: "application/json",
-                },
-              );
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "freev-export.json";
-              a.click();
-              URL.revokeObjectURL(url);
-              toast("Export téléchargé");
-            }}
-          >
-            Exporter
-          </Button>
-          <Button onClick={() => open({ name: "wipe" })}>Supprimer</Button>
-        </div>
-      </Row>
+              Exporter
+            </Button>
+            <Button onClick={() => open({ name: "wipe" })}>Supprimer</Button>
+          </div>
+        </Row>
+      </div>
     </div>
   );
 }
@@ -222,26 +231,36 @@ export function MonthCheck() {
   const [step, setStep] = useState(0);
   const txs = useFreev((s) => s.txs);
   const budgets = useFreev((s) => s.budgets);
-  const flow = flows(txs, "both");
-  const split = spentByCategory(txs, "both");
+  const month = useFreev((s) => s.month);
+  const flow = monthTotals(txs, "both", month);
+  const split = spentByCategory(txs, "both", month);
+  const label = monthName(month);
   return (
     <div className="space-y-6">
       <PageHead
         kicker="Centre"
         title="Contrôle mensuel"
-        lede="Quatre temps pour fermer novembre sans rien laisser de côté."
+        lede={`Quatre temps pour fermer ${label} sans rien laisser de côté.`}
       />
-      <ol className="flex gap-1 overflow-x-auto rounded-full bg-card-2 p-1 [scrollbar-width:none]">
+      {/*
+        Four steps do not fit a 390 px pill row: it used to scroll and cut
+        "Budget" and "Rapport" with no affordance. Below `sm` the steps become a
+        2×2 grid that shows all four at once; from `sm` it goes back to a pill.
+      */}
+      <ol
+        className="grid grid-cols-2 gap-1 rounded-2xl bg-card-2 p-1 sm:flex sm:rounded-full"
+        aria-label="Étapes du contrôle mensuel"
+      >
         {STEPS.map((label, i) => (
-          <li key={label} className="shrink-0">
+          <li key={label} className="min-w-0 sm:shrink-0">
             <button
               type="button"
               aria-current={i === step ? "step" : undefined}
               onClick={() => setStep(i)}
               className={
                 i === step
-                  ? "inline-flex h-9 items-center gap-2 rounded-full bg-copper px-3.5 text-sm font-medium text-copper-ink shadow-float"
-                  : "inline-flex h-9 items-center gap-2 rounded-full px-3.5 text-sm text-mist transition-colors hover:text-ink"
+                  ? "inline-flex h-9 w-full items-center justify-center gap-2 rounded-full bg-copper px-3 text-sm font-medium text-copper-ink shadow-float sm:w-auto sm:px-3.5"
+                  : "inline-flex h-9 w-full items-center justify-center gap-2 rounded-full px-3 text-sm text-mist transition-colors duration-[var(--dur-1)] hover:text-ink sm:w-auto sm:px-3.5"
               }
             >
               <span
@@ -336,7 +355,7 @@ export function MonthCheck() {
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-card-2">
                     <div
                       className={cn(
-                        "h-full rounded-full transition-[width] duration-500",
+                        "h-full rounded-full transition-[width] duration-[var(--dur-4)] ease-[var(--ease-soft)]",
                         over ? "bg-clay" : "bg-sage",
                       )}
                       style={{ width: `${ratio}%` }}
@@ -351,7 +370,7 @@ export function MonthCheck() {
       {step === 3 ? (
         <div>
           <p className="max-w-xl text-sm text-mist">
-            Novembre se ferme avec un net de {money(flow.rest)}. Le rapport reprend les mêmes
+            {label} se ferme avec un net de {money(flow.rest)}. Le rapport reprend les mêmes
             chiffres.
           </p>
           <Link
@@ -371,7 +390,7 @@ export function MonthCheck() {
             Continuer
           </Button>
         ) : (
-          <Button variant="primary" onClick={() => toast("Contrôle de novembre terminé")}>
+          <Button variant="primary" onClick={() => toast(`Contrôle de ${label} terminé`)}>
             Terminer
           </Button>
         )}
@@ -456,20 +475,40 @@ export function Subscriptions() {
   const open = useFreev((s) => s.open);
   const active = subs.filter((s) => s.status === "actif" || s.status === "essai");
   const monthly = active.reduce((s, x) => s + x.price, 0);
+  const pausedCount = subs.filter((s) => s.status === "pause").length;
+  const month = useFreev((s) => s.month);
+  const todayDay = Number(TODAY.slice(8, 10));
+  /** "le 12" alone never said which month; resolve it against the month shown. */
+  const nextCharge = (renews: string) => {
+    const day = Number(renews.replace(/\D/g, ""));
+    const [y, m] = month.split("-").map(Number);
+    const sameMonth = month === TODAY.slice(0, 7) ? day >= todayDay : true;
+    const d = new Date(sameMonth ? y : m === 12 ? y + 1 : y, sameMonth ? m - 1 : m % 12, 1);
+    d.setDate(Math.min(day, 28));
+    return { day, label: format(d, "d MMM", { locale: fr }) };
+  };
+  // Soonest first: the next card to bill is the one you care about.
+  const ordered = [...subs].sort((a, b) => {
+    if (a.status === "résilié") return 1;
+    if (b.status === "résilié") return -1;
+    return nextCharge(a.renews).day - nextCharge(b.renews).day;
+  });
   return (
     <div className="space-y-6">
       <PageHead
         kicker="Centre"
         title="Abonnements"
-        lede={`${money(monthly)} partent encore chaque mois.`}
+        lede={`${money(monthly)} partent encore chaque mois${
+          pausedCount ? `, ${pausedCount} en pause` : ""
+        }.`}
         actions={
           <Button variant="primary" onClick={() => open({ name: "trial" })}>
             Nouvel essai
           </Button>
         }
       />
-      <div className="grid gap-3 md:grid-cols-2">
-        {subs.map((s) => {
+      <div className="stagger grid gap-3 md:grid-cols-2">
+        {ordered.map((s, index) => {
           const tone =
             s.status === "actif"
               ? { dot: "bg-sage", chip: "bg-sage/15 text-sage", label: "actif" }
@@ -479,12 +518,20 @@ export function Subscriptions() {
                   ? { dot: "bg-mist", chip: "bg-card-2 text-mist", label: "en pause" }
                   : { dot: "bg-clay", chip: "bg-clay/15 text-clay", label: "résilié" };
           return (
-            <div key={s.id} className="chrome-pill flex flex-col rounded-3xl bg-card p-5">
+            <div
+              key={s.id}
+              {...stagger(index)}
+              className="chrome-pill flex flex-col rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-serif text-2xl tracking-tight">{s.name}</p>
                   <p className="mt-0.5 text-xs text-mist">
-                    Renouvellement le {s.renews.replace(" du mois", "")}
+                    {s.status === "résilié"
+                      ? "Résilié"
+                      : s.status === "pause"
+                        ? `En pause · reprend le ${nextCharge(s.renews).label}`
+                        : `Prochain prélèvement le ${nextCharge(s.renews).label}`}
                     {s.trialEnd
                       ? ` · essai jusqu’au ${format(parseISO(s.trialEnd), "d MMM", { locale: fr })}`
                       : ""}
@@ -544,23 +591,23 @@ export function Wealth() {
         title="Patrimoine"
         lede="Liquidités, objectifs, dettes. Le net est la seule ligne qui compte."
       />
-      <p className="font-serif text-5xl tabular-nums">{money(liquid - debt)}</p>
+      <p className="font-serif text-5xl tabular-nums">
+        <CountUp value={liquid - debt} />
+      </p>
       <p className="text-sm text-mist">
         Patrimoine net · liquidités moins dettes. Les objectifs sont déjà dans les livrets.
       </p>
-      <dl className="grid gap-4 border-y border-rule sm:grid-cols-3">
-        <div className="py-4">
-          <dt className="text-xs uppercase tracking-widest text-mist">Liquidités</dt>
-          <dd className="font-serif text-3xl">{money(liquid)}</dd>
-        </div>
-        <div className="py-4">
-          <dt className="text-xs uppercase tracking-widest text-mist">Dans les objectifs</dt>
-          <dd className="font-serif text-3xl">{money(goalsSum)}</dd>
-        </div>
-        <div className="py-4">
-          <dt className="text-xs uppercase tracking-widest text-mist">Dettes</dt>
-          <dd className="font-serif text-3xl">{money(debt)}</dd>
-        </div>
+      <dl className="stagger grid gap-4 border-y border-rule sm:grid-cols-3">
+        {[
+          { label: "Liquidités", value: liquid },
+          { label: "Dans les objectifs", value: goalsSum },
+          { label: "Dettes", value: debt },
+        ].map((row, index) => (
+          <div key={row.label} {...stagger(index, 80)} className="py-4">
+            <dt className="text-xs uppercase tracking-widest text-mist">{row.label}</dt>
+            <dd className="font-serif text-3xl tabular-nums">{money(row.value)}</dd>
+          </div>
+        ))}
       </dl>
       <div className="flex flex-wrap gap-4 text-xs uppercase tracking-widest">
         <Link to="/epargne" className="text-copper">
@@ -590,31 +637,59 @@ export function Security() {
         title="Sécurité"
         lede="Mot de passe, seconde étape, sessions ouvertes."
       />
-      <form
-        className="max-w-md space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (password.length < 8) {
-            toast("Huit caractères minimum");
-            return;
-          }
-          setPassword("");
-          toast("Mot de passe mis à jour");
-        }}
-      >
-        <label className="block">
-          <span className="text-xs uppercase tracking-widest text-mist">Nouveau mot de passe</span>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full border-b border-rule bg-transparent py-2 outline-none"
-          />
-        </label>
-        <Button type="submit" variant="primary">
-          Changer le mot de passe
-        </Button>
-      </form>
+      {/*
+        The password form was a bare label floating above a hairline, on a page
+        made only of hairlines, with the rule for "8 characters" printed nowhere
+        until you failed. It is now a real block that states the rule, makes the
+        requirement visible, and confirms when it is met.
+      */}
+      <section className="chrome-pill rounded-3xl bg-card p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-serif text-xl tracking-tight">Mot de passe</h2>
+            <p className="mt-1 text-sm text-mist">
+              Huit caractères minimum. Le changement s’applique aux prochaines connexions.
+            </p>
+          </div>
+          {password.length > 0 ? (
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
+                password.length >= 8 ? "bg-sage/15 text-sage" : "bg-clay/15 text-clay",
+              )}
+            >
+              {password.length >= 8 ? "valide" : `${8 - password.length} de plus`}
+            </span>
+          ) : null}
+        </div>
+        <form
+          className="mt-4 flex flex-col gap-3 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (password.length < 8) {
+              toast("Huit caractères minimum");
+              return;
+            }
+            setPassword("");
+            toast("Mot de passe mis à jour");
+          }}
+        >
+          <label className="flex-1">
+            <span className="sr-only">Nouveau mot de passe</span>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Nouveau mot de passe"
+              className="h-10 w-full rounded-full border border-transparent bg-card-2/70 px-4 text-sm outline-none transition-colors duration-[var(--dur-1)] placeholder:text-mist focus:border-copper/40"
+            />
+          </label>
+          <Button type="submit" variant="primary" disabled={password.length < 8}>
+            Changer le mot de passe
+          </Button>
+        </form>
+      </section>
       <div className="flex items-center justify-between border-y border-rule py-4">
         <div>
           <p className="text-sm">Validation en deux étapes</p>
@@ -624,22 +699,48 @@ export function Security() {
         </div>
         <Toggle on={twoFa} onChange={setTwoFa} label="Deux étapes" />
       </div>
-      <ul className="divide-y divide-rule">
-        {SESSIONS.filter((s) => !closed.includes(s.id)).map((s) => (
-          <li key={s.id} className="flex items-center justify-between py-3">
-            <span>
-              <span className="block text-sm">{s.device}</span>
+      <div className="flex flex-wrap items-baseline justify-between gap-2 pt-2">
+        <h2 className="font-serif text-xl tracking-tight">Sessions ouvertes</h2>
+        <p className="text-xs text-mist">
+          {SESSIONS.filter((s) => !closed.includes(s.id)).length} appareil
+          {SESSIONS.filter((s) => !closed.includes(s.id)).length > 1 ? "s" : ""} connecté
+          {SESSIONS.filter((s) => !closed.includes(s.id)).length > 1 ? "s" : ""}
+        </p>
+      </div>
+      <ul className="stagger grid gap-2">
+        {SESSIONS.filter((s) => !closed.includes(s.id)).map((s, index) => (
+          <li
+            key={s.id}
+            {...stagger(index, 60)}
+            className="flex items-center justify-between gap-3 rounded-2xl bg-card-2/60 px-4 py-3"
+          >
+            <span className="min-w-0">
+              <span className="block truncate text-sm">{s.device}</span>
               <span className="text-xs uppercase tracking-widest text-mist">{s.when}</span>
             </span>
             {s.current ? (
               <span className="text-xs uppercase tracking-widest text-copper">Cet appareil</span>
             ) : (
-              <Button size="sm" onClick={() => close(s.id)}>
+              <Button
+                size="sm"
+                onClick={() => {
+                  close(s.id);
+                  toast(`Session fermée · ${s.device.split(" · ")[0]}`);
+                }}
+              >
                 Fermer
               </Button>
             )}
           </li>
         ))}
+        {closed.length ? (
+          <li className="flex items-center justify-between px-4 py-2 text-xs text-mist">
+            <span>
+              {closed.length} session{closed.length > 1 ? "s" : ""} fermée
+              {closed.length > 1 ? "s" : ""} depuis cette visite
+            </span>
+          </li>
+        ) : null}
       </ul>
     </div>
   );
@@ -688,7 +789,7 @@ export function Account() {
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as typeof mode)}
-            className="mt-1 h-10 w-full rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+            className="mt-1 h-10 w-full rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] focus:border-copper/40"
           >
             <option value="perso">Personnel</option>
             <option value="pro">Pro</option>
@@ -773,7 +874,7 @@ export function Scanner() {
             disabled={saved}
             onClick={() => {
               add({
-                date: "2026-11-19",
+                date: TODAY,
                 label: "Reçu scanné",
                 category: "Alimentation",
                 accountId: "courant",

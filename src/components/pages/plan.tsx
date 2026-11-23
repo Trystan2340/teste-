@@ -1,24 +1,32 @@
 import { eachDayOfInterval, endOfMonth, format, getDay, parseISO, startOfMonth } from "date-fns";
 import { fr } from "date-fns/locale";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Amount, Button, InlineInput, PageHead } from "@/components/ui";
+import { Amount, Button, Empty, InlineInput, PageHead } from "@/components/ui";
 import { useConfirmAction } from "@/components/confirm";
-import { SCHEDULE } from "@/lib/freev/data";
+import { SCHEDULE, TODAY } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
 import { cn, money } from "@/lib/utils";
+import { stagger } from "@/lib/stagger";
 
 export function Planner() {
-  const [cursor, setCursor] = useState(new Date(2026, 10, 1));
+  const month = useFreev((s) => s.month);
+  // The planner opens on the month the rest of the app is showing.
+  const [cursor, setCursor] = useState(() => parseISO(`${month}-01`));
+  // The month selector in the header and the planner stay in step: changing one
+  // used to leave the other showing a different month.
+  useEffect(() => setCursor(parseISO(`${month}-01`)), [month]);
   const open = useFreev((s) => s.open);
   const duplicated = useFreev((s) => s.duplicated);
   const accounts = useFreev((s) => s.accounts);
   const key = format(cursor, "yyyy-MM");
   const days = eachDayOfInterval({ start: startOfMonth(cursor), end: endOfMonth(cursor) });
   const lead = (getDay(startOfMonth(cursor)) + 6) % 7;
-  const showSchedule = key === "2026-11" || duplicated.includes(key);
+  const currentKey = TODAY.slice(0, 7);
+  const todayDay = Number(TODAY.slice(8, 10));
+  const showSchedule = key === currentKey || duplicated.includes(key);
   const balance = accounts.reduce((s, a) => s + a.balance, 0);
-  const ahead = SCHEDULE.filter((s) => key !== "2026-11" || s.day >= 19).reduce(
+  const ahead = SCHEDULE.filter((s) => key !== currentKey || s.day >= todayDay).reduce(
     (s, item) => s + item.amount,
     0,
   );
@@ -40,14 +48,14 @@ export function Planner() {
         }
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
           >
             Mois précédent
           </Button>
-          <p className="min-w-40 text-center font-serif text-2xl capitalize">
+          <p className="min-w-32 text-center font-serif text-2xl capitalize sm:min-w-40">
             {format(cursor, "MMMM yyyy", { locale: fr })}
           </p>
           <Button
@@ -56,6 +64,11 @@ export function Planner() {
           >
             Mois suivant
           </Button>
+          {key === currentKey ? null : (
+            <Button size="sm" onClick={() => setCursor(parseISO(`${currentKey}-01`))}>
+              Aujourd’hui
+            </Button>
+          )}
         </div>
         <p className="text-sm text-mist">
           Solde projeté {money(balance + (showSchedule ? ahead : 0))}
@@ -78,7 +91,7 @@ export function Planner() {
             {days.map((d) => {
               const dom = d.getDate();
               const marks = showSchedule ? SCHEDULE.filter((s) => s.day === dom) : [];
-              const today = key === "2026-11" && dom === 19;
+              const today = key === currentKey && dom === todayDay;
               return (
                 <button
                   key={d.toISOString()}
@@ -123,7 +136,7 @@ export function Planner() {
             </ul>
           ) : (
             <p className="mt-4 text-sm text-mist">
-              Aucune échéance posée sur ce mois. Dupliquez novembre pour les reprendre.
+              Aucune échéance posée sur ce mois. Dupliquez le mois courant pour les reprendre.
             </p>
           )}
           <div className="mt-6 flex flex-wrap gap-2">
@@ -153,18 +166,22 @@ export function Smart() {
         title="Smart"
         lede="Des règles simples qui déplacent l’argent avant que vous ayez à y penser."
       />
-      <ul className="divide-y divide-rule border-y border-rule">
-        {plans.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
+      <ul className="stagger divide-y divide-rule border-y border-rule">
+        {plans.map((plan, index) => (
+          <li
+            key={plan.id}
+            {...stagger(index)}
+            className="flex flex-wrap items-center justify-between gap-3 py-4"
+          >
             <div>
-              <p className="text-sm">{p.name}</p>
-              <p className="text-sm text-mist">{p.detail}</p>
+              <p className="text-sm">{plan.name}</p>
+              <p className="text-sm text-mist">{plan.detail}</p>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs uppercase tracking-widest text-mist">{p.status}</span>
-              <span className="tabular-nums">{money(p.amount)}</span>
-              <Button size="sm" onClick={() => toggle(p.id)}>
-                {p.status === "actif" ? "Pause" : "Activer"}
+              <span className="text-xs uppercase tracking-widest text-mist">{plan.status}</span>
+              <span className="tabular-nums">{money(plan.amount)}</span>
+              <Button size="sm" onClick={() => toggle(plan.id)}>
+                {plan.status === "actif" ? "Pause" : "Activer"}
               </Button>
             </div>
           </li>
@@ -238,13 +255,17 @@ export function Savings() {
           </Button>
         }
       />
-      <ul className="grid gap-3 md:grid-cols-2">
-        {goals.map((g) => {
+      <ul className="stagger grid min-w-0 gap-3 md:grid-cols-2">
+        {goals.map((g, index) => {
           const ratio = g.target ? Math.min(100, Math.round((g.current / g.target) * 100)) : 0;
           const done = ratio >= 100;
           const left = Math.max(g.target - g.current, 0);
           return (
-            <li key={g.id} className="chrome-pill flex flex-col rounded-3xl bg-card p-5">
+            <li
+              key={g.id}
+              {...stagger(index)}
+              className="chrome-pill flex min-w-0 flex-col rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-serif text-2xl tracking-tight">{g.name}</p>
@@ -271,7 +292,7 @@ export function Savings() {
               <div className="mt-3 h-2 overflow-hidden rounded-full bg-card-2">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-[width] duration-500",
+                    "h-full rounded-full transition-[width] duration-[var(--dur-4)] ease-[var(--ease-soft)]",
                     done ? "bg-sage" : "bg-copper",
                   )}
                   style={{ width: `${ratio}%` }}
@@ -302,6 +323,12 @@ export function Savings() {
           );
         })}
       </ul>
+      {goals.length === 0 ? (
+        <Empty
+          title="Aucun objectif pour l’instant"
+          body="Créez-en un pour suivre ce que vous mettez de côté, compte par compte."
+        />
+      ) : null}
     </div>
   );
 }
@@ -335,11 +362,15 @@ export function Debts() {
           <p className="mt-1 text-xs text-mist">par mois, toutes dettes confondues</p>
         </div>
       </div>
-      <ul className="space-y-3">
-        {debts.map((d) => {
+      <ul className="stagger space-y-3">
+        {debts.map((d, index) => {
           const months = d.monthly > 0 ? Math.ceil(d.remaining / d.monthly) : null;
           return (
-            <li key={d.id} className="chrome-pill rounded-3xl bg-card p-5">
+            <li
+              key={d.id}
+              {...stagger(index, 60)}
+              className="chrome-pill rounded-3xl bg-card p-5 transition-[transform,box-shadow] duration-[var(--dur-2)] ease-[var(--ease-soft)] hover:-translate-y-0.5"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{d.name}</p>
@@ -378,6 +409,12 @@ export function Debts() {
           );
         })}
       </ul>
+      {debts.length === 0 ? (
+        <Empty
+          title="Aucune dette en cours"
+          body="Rien à rembourser : ajoutez un crédit seulement s’il en reste un."
+        />
+      ) : null}
     </div>
   );
 }

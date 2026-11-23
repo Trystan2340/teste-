@@ -48,7 +48,7 @@ export function FlowChart({ data }: { data: { m: string; inn: number; out: numbe
             Sorties
           </span>
         </div>
-        <span className="text-xs text-mist">six derniers mois</span>
+        <span className="text-xs text-mist">{data.length} derniers mois affichés</span>
       </figcaption>
 
       <div className="mt-5 flex gap-3">
@@ -68,7 +68,7 @@ export function FlowChart({ data }: { data: { m: string; inn: number; out: numbe
           </div>
 
           <div className="relative flex h-44 items-end justify-between gap-1 sm:gap-3">
-            {data.map((d) => {
+            {data.map((d, index) => {
               const on = hover === d.m;
               return (
                 <div
@@ -98,7 +98,10 @@ export function FlowChart({ data }: { data: { m: string; inn: number; out: numbe
                         "w-full max-w-4 rounded-t-md bg-copper/80 transition-[height,background-color] duration-500 ease-out",
                         on && "bg-copper",
                       )}
-                      style={{ height: mounted ? `${(d.out / max) * 100}%` : "0%" }}
+                      style={{
+                        height: mounted ? `${(d.out / max) * 100}%` : "0%",
+                        transitionDelay: `${75 + index * 55}ms`,
+                      }}
                     />
                   </div>
                   {on ? (
@@ -153,6 +156,11 @@ const SLICE = ["var(--copper)", "var(--teal)", "var(--sage)", "var(--clay)", "va
 
 export function SplitChart({ data }: { data: { name: string; value: number }[] }) {
   const [hover, setHover] = useState<number | null>(null);
+  const [drawn, setDrawn] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setDrawn(true), 60);
+    return () => window.clearTimeout(id);
+  }, []);
   const top = data.slice(0, 5);
   const total = top.reduce((s, d) => s + d.value, 0);
   const R = 54;
@@ -189,10 +197,12 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
                 fill="none"
                 stroke={SLICE[i % SLICE.length]}
                 strokeWidth={hover === i ? 20 : 16}
-                strokeDasharray={`${Math.max(dash - 2, 0)} ${C - Math.max(dash - 2, 0)}`}
-                strokeDashoffset={-offset}
+                strokeDasharray={`${drawn ? Math.max(dash - 2, 0) : 0} ${C}`}
+                strokeDashoffset={drawn ? -offset : -offset + dash}
                 strokeLinecap="butt"
-                className="transition-[stroke-width,opacity] duration-200"
+                style={{
+                  transition: `stroke-dasharray 620ms var(--ease-soft) ${i * 90}ms, stroke-dashoffset 620ms var(--ease-soft) ${i * 90}ms, stroke-width 200ms ease, opacity 200ms ease`,
+                }}
                 opacity={hover === null || hover === i ? 1 : 0.35}
               />
             );
@@ -210,7 +220,7 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
         </div>
       </div>
 
-      <ul className="w-full space-y-1.5">
+      <ul className="w-full min-w-0 space-y-1.5">
         {top.map((slice, i) => (
           <li key={slice.name}>
             <button
@@ -229,10 +239,11 @@ export function SplitChart({ data }: { data: { name: string; value: number }[] }
                 style={{ background: SLICE[i % SLICE.length] }}
               />
               <span className="min-w-0 flex-1 truncate">{slice.name}</span>
-              <span className="tabular-nums text-mist">
+              {/* Percentage is decoration; drop it before squeezing the name. */}
+              <span className="hidden shrink-0 tabular-nums text-mist sm:inline">
                 {Math.round((slice.value / total) * 100)} %
               </span>
-              <span className="w-20 text-right tabular-nums">{money(slice.value)}</span>
+              <span className="shrink-0 text-right tabular-nums">{money(slice.value)}</span>
             </button>
           </li>
         ))}

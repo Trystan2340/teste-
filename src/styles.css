@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/*
+ * Self-hosted type. Same two families, now served from the app instead of
+ * fonts.gstatic.com: no third-party DNS/TLS handshake before first paint, no
+ * request fan-out on a cold cache, and the files work offline. Subsets are
+ * limited to latin + latin-ext (the app is French); the browser only fetches a
+ * file when a glyph in its range is actually used.
+ */
+@import "@fontsource-variable/outfit/wght.css";
+@import "@fontsource-variable/fraunces/opsz.css";
+
 :root {
   --canvas: #10141c;
   --card: #171c26;
@@ -15,36 +25,58 @@
   --leaf: #5dca86;
   --rose: #f08b92;
   --shadow: 0 18px 40px rgb(0 0 0 / 0.35);
+  /* Motion: shared durations and curves so nothing is hand-tuned twice. */
+  --dur-1: 140ms;
+  --dur-2: 240ms;
+  --dur-3: 420ms;
+  --dur-4: 620ms;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
   --float:
     0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.28),
     inset 0 1px 0 rgb(255 255 255 / 0.06);
   color-scheme: dark;
 }
 
+/*
+ * "Papier": a real light theme, not the dark one inverted.
+ *
+ * The canvas is warm off-white, cards are true white so they lift off it, and
+ * the accent stays the same blue but darkened to hold contrast on white. The
+ * halo behind the page is warm rather than the cool grey of the old palette.
+ */
 :root[data-theme="paper"] {
-  --canvas: #e6ebf3;
-  --card: #fbfcfe;
-  --card-2: #e8edf6;
-  --ink: #172033;
-  --mist: #667084;
-  --rule: #d5dce8;
-  --copper: #2f5bff;
-  --copper-ink: #f7f9ff;
-  --sage: #1d7a46;
-  --clay: #c4473a;
-  --teal: #149aaf;
-  --leaf: #2f9d5b;
-  --rose: #d4535c;
-  --shadow: 0 18px 40px rgb(23 32 51 / 0.08);
+  --canvas: #efeae2;
+  --card: #fffdfa;
+  --card-2: #f2ece2;
+  --ink: #1a1712;
+  --mist: #6b6357;
+  --rule: #ded5c7;
+  --copper: #2450e6;
+  --copper-ink: #ffffff;
+  --sage: #2c6a3f;
+  --clay: #b3402c;
+  --teal: #0f7d8c;
+  --leaf: #2f8a4e;
+  --rose: #bd4a4f;
+  --shadow: 0 16px 34px rgb(72 54 30 / 0.1);
   --float:
-    0 0 0 1px rgb(23 32 51 / 0.06), 0 10px 28px rgb(23 32 51 / 0.06),
-    inset 0 1px 0 rgb(255 255 255 / 0.85);
+    0 0 0 1px rgb(72 54 30 / 0.07), 0 6px 18px rgb(72 54 30 / 0.07),
+    inset 0 1px 0 rgb(255 255 255 / 0.9);
   color-scheme: light;
+  /* Grain and veils read differently on paper: soften both. */
+  --veil: rgb(48 38 24 / 0.34);
+  --halo: color-mix(in oklab, #c9a56a 22%, transparent);
+}
+
+:root {
+  --veil: rgb(12 16 24 / 0.46);
+  --halo: color-mix(in oklab, var(--copper) 16%, transparent);
 }
 
 @theme inline {
-  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "Outfit Variable", "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces Variable", "Fraunces", ui-serif, Georgia, serif;
   --color-canvas: var(--canvas);
   --color-card: var(--card);
   --color-card-2: var(--card-2);
@@ -70,17 +102,15 @@
 
   body {
     background-color: var(--canvas);
+    /* One warm halo, tokenised: paper gets a different light than ink. */
     background-image:
-      radial-gradient(
-        980px 420px at 0% -10%,
-        color-mix(in oklab, var(--copper) 16%, transparent),
-        transparent 55%
-      ),
+      radial-gradient(980px 420px at 0% -10%, var(--halo), transparent 55%),
       radial-gradient(
         720px 360px at 100% 0%,
-        color-mix(in oklab, var(--teal) 12%, transparent),
+        color-mix(in oklab, var(--teal) 10%, transparent),
         transparent 50%
       );
+    background-attachment: fixed;
     color: var(--ink);
     font-family: var(--font-sans);
     text-wrap: pretty;
@@ -115,14 +145,19 @@
 }
 
 .veil {
-  background: rgb(12 16 24 / 0.46);
+  background: var(--veil);
 }
 
-/* Numbers and headlines settle instead of popping in on first paint. */
+/* ---------------------------------------------------------------------------
+   Motion
+   Everything below is transform/opacity only, so the compositor does the work
+   and the main thread stays free while the user scrolls.
+   --------------------------------------------------------------------------- */
+
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -130,10 +165,75 @@
   }
 }
 
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes veil-in {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(2px);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+@keyframes grow {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes pulse-dot {
+  0% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  70% {
+    box-shadow: 0 0 0 5px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+    opacity: 1;
+  }
+}
+
 @layer base {
   main > div > header,
   main > div > section {
-    animation: rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: rise var(--dur-3) var(--ease-soft) both;
   }
 
   main > div > section:nth-child(2) {
@@ -141,7 +241,108 @@
   }
 
   main > div > section:nth-child(3) {
-    animation-delay: 80ms;
+    animation-delay: 90ms;
+  }
+}
+
+/* Scroll reveal wrapper (src/components/reveal.tsx). */
+/* Toasts: slide up from the bottom edge instead of popping in. */
+.freev-toast {
+  animation: toast-in var(--dur-3) var(--ease-soft) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Scroll reveal (see src/components/reveal.tsx): the component decides when to
+ * hide, so with JS off nothing is ever hidden. `both` keeps the start frame
+ * during the delay, hence no flash before the animation begins.
+ */
+/*
+ * Segmented controls: the selected pill lands with a small settle instead of
+ * simply switching colour, so the eye can follow what moved.
+ */
+.pill-on {
+  animation: pill-settle var(--dur-2) var(--ease-soft) both;
+}
+
+@keyframes pill-settle {
+  from {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal-pending {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal {
+  animation: rise var(--dur-4) var(--ease-soft) both;
+}
+
+/*
+ * List choreography. Children arrive one after another; the delay itself is
+ * inline (see src/lib/stagger.ts) so a long list can cap it.
+ */
+.stagger > * {
+  animation: rise var(--dur-3) var(--ease-soft) both;
+}
+
+/*
+ * Cross-route fade: native View Transitions drive it, no JS shim.
+ */
+::view-transition-old(root) {
+  animation: fade var(--dur-2) var(--ease-in-out-soft) both reverse;
+}
+
+::view-transition-new(root) {
+  animation: fade var(--dur-3) var(--ease-soft) both;
+}
+
+/* Dialog plumbing: the veil and the sheet animate independently, and the
+   closing state keeps the node mounted long enough to actually leave. */
+.sheet-veil {
+  animation: veil-in var(--dur-2) var(--ease-soft) both;
+  background: var(--veil);
+}
+
+.sheet {
+  animation: sheet-in var(--dur-3) var(--ease-soft) both;
+  transform-origin: bottom center;
+}
+
+.sheet[data-closing="true"] {
+  animation: sheet-out 180ms var(--ease-in-out-soft) both;
+}
+
+.sheet-veil[data-closing="true"] {
+  animation: fade 180ms var(--ease-in-out-soft) both reverse;
+}
+
+/* Statement figures settle upwards once, when they first appear. */
+.count-up {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
   }
 }
 

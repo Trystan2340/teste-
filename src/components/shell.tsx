@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ArrowLeftRight,
+  Briefcase,
   Calendar,
   ChartLine,
   ChevronLeft,
@@ -20,10 +21,9 @@ import {
   Store,
   Target,
   UserRound,
-  Users,
   X,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { format, parseISO } from "date-fns";
 import { fr } from "date-fns/locale";
 import { HELP, type Mode } from "@/lib/freev/data";
@@ -62,9 +62,9 @@ const MORE = [
 ] as const;
 
 const MODES: { id: Mode; label: string; icon: typeof UserRound }[] = [
-  { id: "perso", label: "Individuel", icon: UserRound },
-  { id: "pro", label: "Groupé", icon: Users },
-  { id: "both", label: "Global", icon: Globe },
+  { id: "perso", label: "Personnel", icon: UserRound },
+  { id: "pro", label: "Professionnel", icon: Briefcase },
+  { id: "both", label: "Tout", icon: Globe },
 ];
 
 const MONTHS = [
@@ -160,6 +160,29 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
   const [more, setMore] = useState(false);
   const moreOn = MORE.some((item) => isActive(path, item.to));
 
+  // Same manners as the month picker: close on an outside click or Escape,
+  // and drop the menu once the route changes.
+  useEffect(() => {
+    if (!more) return;
+    const onDown = (e: PointerEvent) => {
+      const panel = document.querySelector("[data-more-menu]");
+      const target = e.target as Node | null;
+      const onToggle = (e.target as Element | null)?.closest?.("[data-more-toggle]");
+      if (panel && target && !panel.contains(target) && !onToggle) setMore(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMore(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [more]);
+
+  useEffect(() => setMore(false), [path]);
+
   return (
     <div className="grain relative flex h-full flex-col items-center border-r border-rule/70 bg-card/75 py-3 backdrop-blur-md">
       <Link
@@ -173,6 +196,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
       <div className="mt-3 flex gap-1">
         <button
           type="button"
+          data-more-toggle
           aria-label="Toutes les pages"
           aria-expanded={more}
           title="Toutes les pages"
@@ -296,7 +320,10 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {more ? (
-        <div className="fixed top-16 left-24 z-40 w-56 rounded-2xl border border-rule bg-card p-2 shadow-lift">
+        <div
+          data-more-menu
+          className="fixed top-16 left-24 z-40 w-56 rounded-2xl border border-rule bg-card p-2 shadow-lift"
+        >
           <p className="px-2 py-1 text-xs text-mist">Toutes les pages</p>
           <ul>
             {MORE.map((item) => (
@@ -334,6 +361,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const theme = useFreev((s) => s.theme);
   const [cal, setCal] = useState(false);
   const [year, setYear] = useState(() => Number(month.slice(0, 4)));
+  // The active scope must be visible, even when the header row scrolls.
+  const activeModeRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    activeModeRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [mode]);
 
   useEffect(() => {
     void useFreev.persist.rehydrate();
@@ -373,6 +405,28 @@ export function Shell({ children }: { children: ReactNode }) {
     setYear(Number(month.slice(0, 4)));
   }, [month]);
 
+  // The month picker behaved like a modal without the manners: it stayed open
+  // under a click elsewhere on the page, and Escape did nothing. The panel is
+  // the first `[data-month-picker]` inside the header wrapper.
+  useEffect(() => {
+    if (!cal) return;
+    const onDown = (e: PointerEvent) => {
+      const panel = document.querySelector("[data-month-picker]");
+      const target = e.target as Node | null;
+      const onToggle = (e.target as Element | null)?.closest?.("[data-month-toggle]");
+      if (panel && target && !panel.contains(target) && !onToggle) setCal(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCal(false);
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [cal]);
+
   return (
     <div className="flex h-dvh overflow-hidden text-ink">
       <aside className="w-20 shrink-0">
@@ -380,7 +434,14 @@ export function Shell({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="relative px-2 pt-2 md:px-3 md:pt-3">
-          <header className="chrome-pill flex items-center gap-2 overflow-x-auto rounded-3xl bg-card/95 px-2 py-2 [scrollbar-width:none] backdrop-blur-md lg:h-14 lg:flex-nowrap lg:rounded-full lg:py-0">
+          {/*
+            The header used to be one endless horizontal scroller: on a 1024 px
+            screen it silently cut "Entre comptes" and the primary action in
+            half, with no scrollbar to hint there was more. It now wraps on every
+            width where the row does not fit (the whole bar is ~1330 px) and
+            keeps the single pill only from `2xl` up.
+          */}
+          <header className="chrome-pill flex flex-wrap items-center gap-2 rounded-3xl bg-card/95 px-2 py-2 backdrop-blur-md 2xl:h-14 2xl:flex-nowrap 2xl:rounded-full 2xl:py-0">
             <div className="flex h-10 shrink-0 items-center rounded-full bg-card-2 px-1">
               <button
                 type="button"
@@ -395,6 +456,7 @@ export function Shell({ children }: { children: ReactNode }) {
               </span>
               <button
                 type="button"
+                data-month-toggle
                 aria-label="Choisir un mois"
                 aria-expanded={cal}
                 className="inline-flex size-8 items-center justify-center rounded-full text-mist hover:bg-card-2 hover:text-ink"
@@ -426,10 +488,14 @@ export function Shell({ children }: { children: ReactNode }) {
                     type="button"
                     role="tab"
                     aria-selected={on}
+                    aria-label={m.label}
+                    ref={on ? activeModeRef : undefined}
                     onClick={() => setMode(m.id)}
                     className={cn(
                       "inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors sm:px-3",
-                      on ? "bg-copper text-copper-ink shadow-float" : "text-mist hover:text-ink",
+                      on
+                        ? "pill-on bg-copper text-copper-ink shadow-float"
+                        : "text-mist hover:text-ink",
                     )}
                   >
                     <Icon className="size-3.5" strokeWidth={1.8} />
@@ -439,9 +505,10 @@ export function Shell({ children }: { children: ReactNode }) {
               })}
             </div>
 
-            <div className="ml-auto flex shrink-0 items-center gap-1">
+            <div className="ml-auto flex shrink-0 items-center gap-1 max-xl:basis-full max-xl:justify-end">
               <button
                 type="button"
+                aria-label="Rechercher"
                 onClick={() => setSearch(true)}
                 className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-2.5 text-sm text-mist transition-colors hover:bg-card-2 hover:text-ink"
               >
@@ -478,7 +545,10 @@ export function Shell({ children }: { children: ReactNode }) {
             </div>
           </header>
           {cal ? (
-            <div className="absolute top-16 left-3 z-30 w-64 rounded-2xl border border-rule bg-card p-3 shadow-lift md:left-4">
+            <div
+              data-month-picker
+              className="absolute top-16 left-3 z-30 w-64 rounded-2xl border border-rule bg-card p-3 shadow-lift md:left-4"
+            >
               <div className="flex items-center justify-between">
                 <button
                   type="button"
@@ -559,9 +629,21 @@ function SearchOverlay() {
   const setSearch = useFreev((s) => s.setSearch);
   const txs = useFreev((s) => s.txs);
   const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
   useEffect(() => {
     if (!open) setValue("");
+    else inputRef.current?.focus();
   }, [open]);
+  // The palette is a modal, so it has to answer Escape like one. It used to
+  // ignore the key entirely and could only be dismissed with the mouse.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSearch(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setSearch]);
   if (!open) return null;
   const q = value.trim().toLowerCase();
   const pages = [...RAIL, ...LIFE.map((l) => ({ to: l.to, label: l.label })), ...MORE].filter(
@@ -581,13 +663,14 @@ function SearchOverlay() {
       />
       <div
         role="dialog"
+        aria-modal="true"
         aria-label="Recherche"
-        className="relative mx-auto mt-16 w-full max-w-xl rounded-3xl border border-rule bg-card p-5 shadow-lift"
+        className="relative mx-auto mt-16 w-[calc(100%-1.5rem)] max-w-xl rounded-3xl border border-rule bg-card p-5 shadow-lift"
       >
         <div className="flex items-center gap-3 border-b border-rule">
           <Search className="size-4 text-mist" />
           <input
-            autoFocus
+            ref={inputRef}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Page, opération, aide"

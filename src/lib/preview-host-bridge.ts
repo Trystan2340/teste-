@@ -5,7 +5,6 @@
  * Top-level runs (download/export, local `npm run dev`, deployed sites) noop.
  */
 
-import { z } from "zod";
 import { CONNECTOR_TOKEN_READY_EVENT } from "./app-data/types";
 import { resolveParentEmbedderOrigin } from "./preview-embedder-origin";
 
@@ -18,29 +17,53 @@ export {
 export const PREVIEW_BRIDGE_CHANNEL = "grok-preview-bridge" as const;
 export const PREVIEW_BRIDGE_VERSION = 1 as const;
 
-const EnvelopeSchema = z.object({
-  channel: z.literal(PREVIEW_BRIDGE_CHANNEL),
-  version: z.number().int().positive(),
-  type: z.string().min(1),
-});
+/**
+ * Message guards.
+ *
+ * These used to be zod schemas. zod is ~100 KB of JavaScript and this file is
+ * mounted on every page, so the only consumer in the app was pulling it into
+ * the entry chunk to check five small, known message shapes. The guards below
+ * accept and reject exactly what the schemas did, and cost nothing.
+ */
+type Envelope = {
+  channel: typeof PREVIEW_BRIDGE_CHANNEL;
+  version: number;
+  type: string;
+};
 
-const HelloSchema = EnvelopeSchema.extend({
-  type: z.literal("hello"),
-});
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-const NavigateSchema = EnvelopeSchema.extend({
-  type: z.literal("navigate"),
-  path: z.string().min(1),
-});
+function isEnvelope(value: unknown): value is Envelope {
+  return (
+    isRecord(value) &&
+    value.channel === PREVIEW_BRIDGE_CHANNEL &&
+    typeof value.version === "number" &&
+    Number.isInteger(value.version) &&
+    value.version > 0 &&
+    typeof value.type === "string" &&
+    value.type.length > 0
+  );
+}
 
-const HistorySchema = EnvelopeSchema.extend({
-  type: z.literal("history"),
-  delta: z.union([z.literal(-1), z.literal(1)]),
-});
+function isType(value: unknown, type: string): boolean {
+  return isEnvelope(value) && value.type === type;
+}
 
-const ConnectorTokenReadySchema = EnvelopeSchema.extend({
-  type: z.literal("connector-token-ready"),
-});
+function isNavigate(value: unknown): value is Envelope & { path: string } {
+  return (
+    isType(value, "navigate") &&
+    typeof (value as Record<string, unknown>).path === "string" &&
+    (value as { path: string }).path.length > 0
+  );
+}
+
+function isHistory(value: unknown): value is Envelope & { delta: -1 | 1 } {
+  if (!isType(value, "history")) return false;
+  const delta = (value as Record<string, unknown>).delta;
+  return delta === -1 || delta === 1;
+}
 
 export type PreviewHostBridgeOptions = {
   /** Prefer the app router when available; falls back to history.pushState. */
@@ -69,7 +92,7 @@ export function isSafeBridgePath(path: string): boolean {
 export function resolveCurrentEmbedderOrigin(): string | null {
   if (typeof window === "undefined") return null;
   const ancestorOrigin =
-    typeof location.ancestorOrigins !== 'undefined' && location.ancestorOrigins.length > 0
+    typeof location.ancestorOrigins !== "undefined" && location.ancestorOrigins.length > 0
       ? location.ancestorOrigins[0]
       : null;
   return resolveParentEmbedderOrigin(
@@ -84,9 +107,7 @@ export function resolveCurrentEmbedderOrigin(): string | null {
  * Install host↔guest messaging. Returns a dispose function.
  * Noops (returns a no-op dispose) when not embedded under a Grok parent.
  */
-export function installPreviewHostBridge(
-  options: PreviewHostBridgeOptions = {},
-): () => void {
+export function installPreviewHostBridge(options: PreviewHostBridgeOptions = {}): () => void {
   const parentOrigin = resolveCurrentEmbedderOrigin();
   if (parentOrigin === null) return () => {};
 
@@ -96,9 +117,7 @@ export function installPreviewHostBridge(
 
   const isAtHistoryRoot = () => {
     const state = window.history.state;
-    return Boolean(
-      state && typeof state === "object" && state[ROOT_STATE_KEY] === true,
-    );
+    return Boolean(state && typeof state === "object" && state[ROOT_STATE_KEY] === true);
   };
 
   // Floor for chrome Back: only the first install in a fresh history stack is
@@ -183,29 +202,27 @@ export function installPreviewHostBridge(
   // Host re-handshake: it may have (re)mounted after our install-time
   // announce, or asked before we hydrated. Announce again.
   const onHello = (data: unknown) => {
-    if (!HelloSchema.safeParse(data).success) return;
+    if (!isType(data, "hello")) return;
     announce();
   };
 
   const onNavigate = (data: unknown) => {
-    const parsed = NavigateSchema.safeParse(data);
-    if (!parsed.success) return;
-    navigate(parsed.data.path);
+    if (!isNavigate(data)) return;
+    navigate(data.path);
     // Router navigations often update location asynchronously; report after a tick.
     queueMicrotask(reportLocation);
   };
 
   const onHistory = (data: unknown) => {
-    const parsed = HistorySchema.safeParse(data);
-    if (!parsed.success) return;
+    if (!isHistory(data)) return;
     // Do not history.go(-1) off the first entry — that leaves the preview.
-    if (parsed.data.delta === -1 && isAtHistoryRoot()) return;
+    if (data.delta === -1 && isAtHistoryRoot()) return;
     // Location sync comes from the popstate listener once history settles.
-    window.history.go(parsed.data.delta);
+    window.history.go(data.delta);
   };
 
   const onConnectorTokenReady = (data: unknown) => {
-    if (!ConnectorTokenReadySchema.safeParse(data).success) return;
+    if (!isType(data, "connector-token-ready")) return;
     window.dispatchEvent(new Event(CONNECTOR_TOKEN_READY_EVENT));
   };
 
@@ -220,9 +237,9 @@ export function installPreviewHostBridge(
     if (event.source !== window.parent) return;
     if (event.origin !== parentOrigin) return;
 
-    const envelope = EnvelopeSchema.safeParse(event.data);
-    if (!envelope.success || envelope.data.version !== PREVIEW_BRIDGE_VERSION) return;
-    hostMessageHandlers.get(envelope.data.type)?.(event.data);
+    if (!isEnvelope(event.data)) return;
+    if (event.data.version !== PREVIEW_BRIDGE_VERSION) return;
+    hostMessageHandlers.get(event.data.type)?.(event.data);
   };
 
   const onPopState = () => {
@@ -236,21 +253,17 @@ export function installPreviewHostBridge(
 
   // Patch history so in-app SPA navigations sync the host address bar.
   window.history.pushState = (data, unused, url) => {
-    const next =
-      data && typeof data === "object"
-        ? { ...data, [ROOT_STATE_KEY]: false }
-        : data;
+    const next = data && typeof data === "object" ? { ...data, [ROOT_STATE_KEY]: false } : data;
     originalPushState(next, unused, url);
     reportLocation();
   };
   window.history.replaceState = (data, unused, url) => {
-    const next =
-      isAtHistoryRoot()
-        ? {
-            ...(data && typeof data === "object" ? data : {}),
-            [ROOT_STATE_KEY]: true,
-          }
-        : data;
+    const next = isAtHistoryRoot()
+      ? {
+          ...(data && typeof data === "object" ? data : {}),
+          [ROOT_STATE_KEY]: true,
+        }
+      : data;
     originalReplaceState(next, unused, url);
     reportLocation();
   };

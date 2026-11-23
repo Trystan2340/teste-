@@ -8,5 +8,9 @@ export function getRouter() {
     routeTree,
     rewrite: previewPathRewrite(),
     defaultErrorComponent: AppErrorComponent,
+    // Native cross-fade between routes (see ::view-transition-* in styles.css).
+    // Browsers without support simply navigate as before.
+    defaultViewTransition: true,
+    scrollRestoration: true,
   });
 }

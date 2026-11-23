@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { Shell } from "@/components/shell";
-import { Settings } from "@/components/pages/system";
+
+const Settings = lazyRouteComponent(() => import("@/components/pages/system"), "Settings");
 
 export const Route = createFileRoute("/parametres")({
   head: () => ({ meta: [{ title: "Paramètres — FREEV" }] }),

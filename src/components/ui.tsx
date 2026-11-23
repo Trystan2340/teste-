@@ -1,4 +1,3 @@
-import { cva, type VariantProps } from "class-variance-authority";
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -9,30 +8,45 @@ import type {
 import type { TxKind } from "@/lib/freev/data";
 import { cn, money, signed } from "@/lib/utils";
 
-const buttonStyles = cva(
-  "inline-flex items-center justify-center gap-2 rounded-full border text-sm font-medium transition-[background-color,color,border-color,transform] duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40",
-  {
-    variants: {
-      variant: {
-        primary: "border-copper bg-copper text-copper-ink hover:brightness-110",
-        ghost: "border-rule bg-card text-ink shadow-float hover:border-copper/30 hover:text-copper",
-        quiet: "border-transparent bg-transparent px-0 text-mist shadow-none hover:text-ink",
-      },
-      size: {
-        md: "h-10 px-4",
-        sm: "h-9 px-3 text-xs",
-      },
-    },
-    defaultVariants: { variant: "ghost", size: "md" },
-  },
-);
+type ButtonVariant = "primary" | "ghost" | "quiet";
+type ButtonSize = "md" | "sm";
+
+/**
+ * Button classes. One `cva()` call was the only reason the app carried
+ * class-variance-authority; a lookup table does the same job in six lines and
+ * keeps the same API (`variant`, `size`, defaults).
+ */
+const BUTTON_BASE =
+  "inline-flex items-center justify-center gap-2 rounded-full border text-sm font-medium transition-[background-color,color,border-color,box-shadow,transform] duration-[var(--dur-1)] ease-[var(--ease-soft)] active:scale-[0.97] disabled:pointer-events-none disabled:opacity-40";
+
+const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
+  primary: "border-copper bg-copper text-copper-ink hover:brightness-110",
+  ghost: "border-rule bg-card text-ink shadow-float hover:border-copper/30 hover:text-copper",
+  quiet: "border-transparent bg-transparent px-0 text-mist shadow-none hover:text-ink",
+};
+
+const BUTTON_SIZES: Record<ButtonSize, string> = {
+  md: "h-10 px-4",
+  sm: "h-9 px-3 text-xs",
+};
+
+const buttonStyles = ({
+  variant = "ghost",
+  size = "md",
+}: {
+  variant?: ButtonVariant | null;
+  size?: ButtonSize | null;
+}) => `${BUTTON_BASE} ${BUTTON_VARIANTS[variant ?? "ghost"]} ${BUTTON_SIZES[size ?? "md"]}`;
 
 export function Button({
   className,
   variant,
   size,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonStyles>) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+}) {
   return <button className={cn(buttonStyles({ variant, size }), className)} {...props} />;
 }
 
@@ -169,7 +183,7 @@ export function Stat({
   tone?: "sage" | "clay" | "mist";
 }) {
   return (
-    <div className="px-4 py-5 first:pl-0 last:pr-0">
+    <div className="px-3 py-5 sm:px-4">
       <p className="text-xs uppercase tracking-widest text-mist">{label}</p>
       <p className="mt-2 font-serif text-3xl tabular-nums text-ink">{value}</p>
       {note ? (
@@ -199,11 +213,21 @@ export function Amount({ value, kind }: { value: number; kind?: TxKind }) {
   );
 }
 
-export function Empty({ title, body }: { title: string; body: string }) {
+export function Empty({
+  title,
+  body,
+  action,
+}: {
+  title: string;
+  body: string;
+  /** Optional way out — an empty state that only explains is a dead end. */
+  action?: React.ReactNode;
+}) {
   return (
     <div className="rounded-2xl border border-dashed border-rule bg-card/60 px-4 py-10 text-center">
       <p className="font-serif text-2xl">{title}</p>
       <p className="mt-2 text-sm text-mist">{body}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
 }

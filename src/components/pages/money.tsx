@@ -1,10 +1,12 @@
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { Link } from "@tanstack/react-router";
 import { Pencil, ScanLine, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Amount, Button, Empty, PageHead } from "@/components/ui";
 import { useConfirmAction } from "@/components/confirm";
 import { FlowChart } from "@/components/charts";
-import { HISTORY, SERIES, inScope, type TxKind } from "@/lib/freev/data";
+import { HISTORY, SERIES, TODAY, inScope, type TxKind } from "@/lib/freev/data";
 import { useFreev } from "@/lib/freev/store";
 import { dayLabel, money } from "@/lib/utils";
 
@@ -44,7 +46,7 @@ export function Transactions() {
           <>
             <Link
               to="/scanner"
-              className="inline-flex h-10 items-center gap-2 rounded-full border border-rule bg-card px-4 text-sm font-medium text-ink shadow-float transition-colors hover:border-copper/30 hover:text-copper active:scale-[0.98]"
+              className="inline-flex h-10 items-center gap-2 rounded-full border border-rule bg-card px-4 text-sm font-medium text-ink shadow-float transition-colors duration-[var(--dur-1)] hover:border-copper/30 hover:text-copper active:scale-[0.98]"
             >
               <ScanLine className="size-4" strokeWidth={1.8} />
               Scanner
@@ -62,7 +64,7 @@ export function Transactions() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="h-10 w-full rounded-full border border-transparent bg-card-2/70 pr-3 pl-9 text-sm text-ink outline-none transition-colors placeholder:text-mist focus:border-copper/40"
+            className="h-10 w-full rounded-full border border-transparent bg-card-2/70 pr-3 pl-9 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] placeholder:text-mist focus:border-copper/40"
             placeholder="Rechercher un libellé…"
           />
         </label>
@@ -80,7 +82,7 @@ export function Transactions() {
             <select
               value={f.value}
               onChange={(e) => f.set(e.target.value)}
-              className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+              className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] focus:border-copper/40"
             >
               {f.options.map((o) => (
                 <option key={o} value={o}>
@@ -99,7 +101,7 @@ export function Transactions() {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as typeof kind)}
-            className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors focus:border-copper/40"
+            className="h-10 w-full cursor-pointer rounded-full border border-transparent bg-card-2/70 px-3 text-sm text-ink outline-none transition-colors duration-[var(--dur-1)] focus:border-copper/40"
           >
             <option value="tous">tous les types</option>
             <option value="expense">dépense</option>
@@ -109,7 +111,7 @@ export function Transactions() {
         </label>
         <Button
           variant="quiet"
-          className="h-10 px-3"
+          className="h-10 w-full px-3 text-copper disabled:text-mist md:w-auto md:text-right"
           onClick={() => {
             setQ("");
             setCat("toutes");
@@ -134,7 +136,10 @@ export function Transactions() {
           {/* Phones get cards: a six-column table is never readable at 390 px. */}
           <ul className="space-y-2 md:hidden">
             {rows.map((t) => (
-              <li key={t.id} className="rounded-2xl border border-rule bg-card/70 p-3">
+              <li
+                key={t.id}
+                className="rounded-2xl border border-rule bg-card/70 p-3 transition-[transform,border-color] duration-[var(--dur-1)] ease-[var(--ease-soft)] hover:-translate-y-px hover:border-copper/25"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{t.label}</p>
@@ -198,10 +203,10 @@ export function Transactions() {
                 {rows.map((t) => (
                   <tr
                     key={t.id}
-                    className="group/row border-t border-rule transition-colors hover:bg-card/50 [&>td]:py-3"
+                    className="group/row border-t border-rule transition-colors duration-[var(--dur-1)] hover:bg-card/50 [&>td]:py-3"
                   >
                     <td className="whitespace-nowrap tabular-nums">{dayLabel(t.date)}</td>
-                    <td>
+                    <td className="max-w-[22rem]">
                       {t.label}
                       {t.pending ? (
                         <span className="ml-2 rounded-full bg-copper/12 px-1.5 py-0.5 text-[11px] text-copper">
@@ -223,7 +228,7 @@ export function Transactions() {
                           aria-label={`Modifier ${t.label}`}
                           title="Modifier"
                           onClick={() => open({ name: "tx", editId: t.id })}
-                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-card-2 hover:text-copper"
+                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors duration-[var(--dur-1)] hover:bg-card-2 hover:text-copper"
                         >
                           <Pencil className="size-4" strokeWidth={1.7} />
                         </button>
@@ -240,7 +245,7 @@ export function Transactions() {
                               () => remove(t.id),
                             )
                           }
-                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors hover:bg-rose/12 hover:text-rose"
+                          className="inline-flex size-8 items-center justify-center rounded-full text-mist transition-colors duration-[var(--dur-1)] hover:bg-rose/12 hover:text-rose"
                         >
                           <Trash2 className="size-4" strokeWidth={1.7} />
                         </button>
@@ -265,6 +270,17 @@ export function Recurring() {
   const rows = txs.filter((t) => t.recurring);
   const out = rows.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
   const inn = rows.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const month = useFreev((s) => s.month);
+  const todayDay = Number(TODAY.slice(8, 10));
+  /** When this line hits again: this month if the day is ahead, else next month. */
+  const nextDate = (date: string) => {
+    const day = Number(date.slice(8, 10));
+    const [y, m] = month.split("-").map(Number);
+    const sameMonth = month === TODAY.slice(0, 7) ? day >= todayDay : true;
+    const d = new Date(sameMonth ? y : m === 12 ? y + 1 : y, sameMonth ? m - 1 : m % 12, 1);
+    d.setDate(Math.min(day, 28));
+    return format(d, "d MMM", { locale: fr });
+  };
   return (
     <div className="space-y-6">
       <PageHead
@@ -286,8 +302,8 @@ export function Recurring() {
             <div>
               <p className="text-sm">{t.label}</p>
               <p className="text-xs uppercase tracking-widest text-mist">
-                {t.category} · jour {Number(t.date.slice(8, 10))} ·{" "}
-                {t.scope === "pro" ? "pro" : "perso"}
+                {t.category} · prochain le {nextDate(t.date)} ·{" "}
+                {t.scope === "pro" ? "professionnel" : "personnel"}
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -319,14 +335,16 @@ export function Recurring() {
 }
 
 export function HistoryPage() {
-  const [id, setId] = useState(HISTORY[0].id);
+  const today = useFreev((s) => s.month);
+  const setMonth = useFreev((s) => s.setMonth);
+  const [id, setId] = useState(today);
   const current = HISTORY.find((h) => h.id === id) ?? HISTORY[0];
   return (
     <div className="space-y-6">
       <PageHead
         kicker="Opérations"
         title="Historique"
-        lede="Six mois de flux. Novembre ouvre le journal détaillé."
+        lede="Six mois de flux. Le mois courant ouvre le journal détaillé."
       />
       <FlowChart data={[...SERIES]} />
       <div className="grid gap-6 lg:grid-cols-12">
@@ -335,7 +353,11 @@ export function HistoryPage() {
             <li key={h.id}>
               <button
                 type="button"
-                onClick={() => setId(h.id)}
+                onClick={() => {
+                  setId(h.id);
+                  // Picking a month in the history also moves the whole app.
+                  setMonth(h.id);
+                }}
                 className="flex w-full items-center justify-between py-3 text-left"
               >
                 <span className={h.id === id ? "text-ink" : "text-mist"}>{h.label}</span>
@@ -360,16 +382,16 @@ export function HistoryPage() {
               <dd className="font-serif text-2xl">{money(current.inn - current.out)}</dd>
             </div>
           </dl>
-          {current.id === "2026-11" ? (
+          {current.id === today ? (
             <Link
               to="/transactions"
               className="mt-6 inline-block text-xs uppercase tracking-widest text-copper"
             >
-              Ouvrir le journal de novembre
+              Ouvrir le journal de {current.label.split(" ")[0].toLowerCase()}
             </Link>
           ) : (
             <p className="mt-6 text-sm text-mist">
-              Le détail ligne à ligne est tenu pour novembre. Les mois précédents restent en
+              Le détail ligne à ligne n’est tenu que pour le mois courant. Les autres restent en
               agrégat.
             </p>
           )}

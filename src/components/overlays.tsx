@@ -1,9 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { Button, Field, Select, Toggle } from "@/components/ui";
 import { CATEGORIES, LOGOS, SCHEDULE, TODAY, type Scope, type TxKind } from "@/lib/freev/data";
+import { nextMonth } from "@/lib/freev/calc";
 import { useFreev } from "@/lib/freev/store";
 import { cn, money, uid } from "@/lib/utils";
+import { DialogCloseContext, useDialogClose, useSheetClose } from "@/components/dialog-motion";
 
 export function Overlays() {
   const dialog = useFreev((s) => s.dialog);
@@ -24,6 +26,13 @@ export function Overlays() {
   return null;
 }
 
+/**
+ * Every dialog closes through here.
+ *
+ * Leaving used to be instant: the node was unmounted the moment `dialog`
+ * cleared. The sheet now plays a short exit first, which also means Escape,
+ * the veil and the X button all feel like the same gesture.
+ */
 function Modal({
   title,
   lede,
@@ -35,51 +44,98 @@ function Modal({
   kicker?: string;
   children: ReactNode;
 }) {
-  const open = useFreev((s) => s.open);
+  const { close, closing } = useSheetClose();
+  const sheetRef = useRef<HTMLDivElement | null>(null);
 
   // Escape closes the dialog — expected everywhere, and previously missing.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") open(null);
+      if (e.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [close]);
+
+  /*
+   * A dialog that does not take focus is a dialog you can tab straight past:
+   * focus stayed on the page behind the veil, so keyboard users were typing
+   * into a form they could not see and Enter could re-trigger the button that
+   * opened the sheet. Focus the first field, keep Tab inside the sheet, and
+   * hand focus back to the opener on close.
+   */
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const node = sheetRef.current;
+    if (!node) return;
+    const focusables = () =>
+      [
+        ...node.querySelectorAll<HTMLElement>(
+          "input, select, textarea, button, [href], [tabindex]",
+        ),
+      ].filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null);
+    const first = node.querySelector<HTMLElement>("input, select, textarea") ?? focusables()[0];
+    first?.focus();
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = focusables();
+      if (list.length === 0) return;
+      const start = list[0];
+      const end = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === start) {
+        e.preventDefault();
+        end.focus();
+      } else if (!e.shiftKey && document.activeElement === end) {
+        e.preventDefault();
+        start.focus();
+      }
+    };
+    node.addEventListener("keydown", onKey);
+    return () => {
+      node.removeEventListener("keydown", onKey);
+      opener?.focus?.();
+    };
+  }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
-      <button
-        type="button"
-        aria-label="Fermer"
-        className="veil absolute inset-0"
-        onClick={() => open(null)}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="relative max-h-screen w-full overflow-y-auto rounded-t-3xl border border-rule bg-card p-5 shadow-lift sm:max-w-lg sm:rounded-3xl sm:p-6"
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-xs font-medium tracking-wide text-copper">{kicker}</p>
-            <h2 className="mt-1 font-serif text-3xl leading-tight tracking-tight">{title}</h2>
-            {lede ? (
-              <p className="mt-2 max-w-md text-sm leading-relaxed text-mist">{lede}</p>
-            ) : null}
+    <DialogCloseContext.Provider value={close}>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+        <button
+          type="button"
+          aria-label="Fermer"
+          data-closing={closing}
+          className="sheet-veil absolute inset-0"
+          onClick={close}
+        />
+        <div
+          ref={sheetRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
+          data-closing={closing}
+          className="sheet relative max-h-screen w-full overflow-y-auto rounded-t-3xl border border-rule bg-card p-5 shadow-lift sm:max-w-lg sm:rounded-3xl sm:p-6"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-xs font-medium tracking-wide text-copper">{kicker}</p>
+              <h2 className="mt-1 font-serif text-3xl leading-tight tracking-tight">{title}</h2>
+              {lede ? (
+                <p className="mt-2 max-w-md text-sm leading-relaxed text-mist">{lede}</p>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              aria-label="Fermer"
+              onClick={close}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-rule bg-card text-mist transition-colors hover:border-copper/40 hover:text-ink"
+            >
+              <X className="size-4" />
+            </button>
           </div>
-          <button
-            type="button"
-            aria-label="Fermer"
-            onClick={() => open(null)}
-            className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-rule bg-card text-mist transition-colors hover:border-copper/40 hover:text-ink"
-          >
-            <X className="size-4" />
-          </button>
+          <div className="mt-6">{children}</div>
         </div>
-        <div className="mt-6">{children}</div>
       </div>
-    </div>
+    </DialogCloseContext.Provider>
   );
 }
 
@@ -116,7 +172,7 @@ function KindSwitch({ value, onChange }: { value: TxKind; onChange: (k: TxKind) 
           onClick={() => onChange(o.id)}
           className={
             value === o.id
-              ? "h-9 flex-1 rounded-full bg-copper text-sm font-medium text-copper-ink shadow-float"
+              ? "pill-on h-9 flex-1 rounded-full bg-copper text-sm font-medium text-copper-ink shadow-float"
               : "h-9 flex-1 rounded-full text-sm text-mist transition-colors hover:text-ink"
           }
         >
@@ -128,10 +184,10 @@ function KindSwitch({ value, onChange }: { value: TxKind; onChange: (k: TxKind) 
 }
 
 function TxDialog() {
+  const close = useDialogClose();
   const dialog = useFreev((s) => s.dialog);
   const accounts = useFreev((s) => s.accounts);
   const addTx = useFreev((s) => s.addTx);
-  const open = useFreev((s) => s.open);
   const txs = useFreev((s) => s.txs);
   const updateTx = useFreev((s) => s.updateTx);
   const editId = dialog && dialog.name === "tx" ? dialog.editId : undefined;
@@ -180,7 +236,6 @@ function TxDialog() {
         recurring,
         logo,
       });
-      open(null);
       return;
     }
     addTx({
@@ -287,7 +342,7 @@ function TxDialog() {
         ) : null}
         {error ? <p className="text-sm text-clay">{error}</p> : null}
         <DialogActions>
-          <Button type="button" onClick={() => open(null)}>
+          <Button type="button" onClick={close}>
             Annuler
           </Button>
           <Button type="button" variant="primary" onClick={save}>
@@ -300,9 +355,11 @@ function TxDialog() {
 }
 
 function DuplicateDialog() {
+  const close = useDialogClose();
   const mark = useFreev((s) => s.markDuplicated);
-  const open = useFreev((s) => s.open);
-  const [month, setMonth] = useState("2026-12");
+  const current = useFreev((s) => s.month);
+  // Default to the month after the one being looked at, not a fixed December.
+  const [month, setMonth] = useState(() => nextMonth(current));
   const [income, setIncome] = useState(true);
   const [expense, setExpense] = useState(true);
   return (
@@ -340,7 +397,7 @@ function DuplicateDialog() {
           ))}
         </ul>
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -356,9 +413,9 @@ function DuplicateDialog() {
 }
 
 function BudgetDialog() {
+  const close = useDialogClose();
   const budgets = useFreev((s) => s.budgets);
   const setBudgets = useFreev((s) => s.setBudgets);
-  const open = useFreev((s) => s.open);
   const [draft, setDraft] = useState(budgets);
   return (
     <Modal
@@ -379,7 +436,7 @@ function BudgetDialog() {
           />
         ))}
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -395,9 +452,9 @@ function BudgetDialog() {
 }
 
 function OpeningDialog() {
+  const close = useDialogClose();
   const accounts = useFreev((s) => s.accounts);
   const patch = useFreev((s) => s.patchAccount);
-  const open = useFreev((s) => s.open);
   const [id, setId] = useState(accounts[0]?.id ?? "");
   const current = accounts.find((a) => a.id === id);
   const [amount, setAmount] = useState(String(current?.balance ?? 0));
@@ -430,14 +487,14 @@ function OpeningDialog() {
           onChange={(e) => setAmount(e.target.value)}
         />
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
               const n = Number(amount.replace(",", "."));
               if (!Number.isFinite(n)) return;
               patch(id, { balance: n });
-              open(null);
+              close();
             }}
           >
             Mettre à jour
@@ -449,8 +506,8 @@ function OpeningDialog() {
 }
 
 function TransferDialog() {
+  const close = useDialogClose();
   const accounts = useFreev((s) => s.accounts);
-  const open = useFreev((s) => s.open);
   const [from, setFrom] = useState(accounts[0]?.id ?? "");
   const [to, setTo] = useState(accounts[1]?.id ?? "");
   const [amount, setAmount] = useState("");
@@ -483,7 +540,7 @@ function TransferDialog() {
         <Field label="Note" value={note} onChange={(e) => setNote(e.target.value)} />
         {error ? <p className="text-sm text-clay">{error}</p> : null}
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -504,9 +561,9 @@ function TransferDialog() {
 }
 
 function GoalDialog({ id }: { id?: string }) {
+  const close = useDialogClose();
   const goals = useFreev((s) => s.goals);
   const save = useFreev((s) => s.saveGoal);
-  const open = useFreev((s) => s.open);
   const accounts = useFreev((s) => s.accounts);
   const existing = goals.find((g) => g.id === id);
   const [name, setName] = useState(existing?.name ?? "");
@@ -533,7 +590,7 @@ function GoalDialog({ id }: { id?: string }) {
           ))}
         </Select>
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -557,9 +614,9 @@ function GoalDialog({ id }: { id?: string }) {
 }
 
 function DebtDialog({ id }: { id?: string }) {
+  const close = useDialogClose();
   const debts = useFreev((s) => s.debts);
   const save = useFreev((s) => s.saveDebt);
-  const open = useFreev((s) => s.open);
   const existing = debts.find((d) => d.id === id);
   const [name, setName] = useState(existing?.name ?? "");
   const [remaining, setRemaining] = useState(String(existing?.remaining ?? ""));
@@ -579,7 +636,7 @@ function DebtDialog({ id }: { id?: string }) {
         <Field label="Taux (%)" value={rate} onChange={(e) => setRate(e.target.value)} />
         <Field label="Fin" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -603,10 +660,11 @@ function DebtDialog({ id }: { id?: string }) {
 }
 
 function AccountsDialog() {
+  const close = useDialogClose();
+  const open = useFreev((s) => s.open);
   const accounts = useFreev((s) => s.accounts);
   const add = useFreev((s) => s.addAccount);
   const remove = useFreev((s) => s.removeAccount);
-  const open = useFreev((s) => s.open);
   const [name, setName] = useState("");
   const [bank, setBank] = useState("");
   const [kind, setKind] = useState<"courant" | "epargne" | "pro">("courant");
@@ -647,7 +705,7 @@ function AccountsDialog() {
         </Select>
         <Field label="Solde initial" value={balance} onChange={(e) => setBalance(e.target.value)} />
         <DialogActions>
-          <Button onClick={() => open(null)}>Fermer</Button>
+          <Button onClick={close}>Fermer</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -674,10 +732,10 @@ function AccountsDialog() {
 }
 
 function PickAccountDialog() {
+  const close = useDialogClose();
   const accounts = useFreev((s) => s.accounts);
   const active = useFreev((s) => s.activeAccountId);
   const setActive = useFreev((s) => s.setActiveAccount);
-  const open = useFreev((s) => s.open);
   const [id, setId] = useState(active);
   return (
     <Modal
@@ -733,7 +791,7 @@ function PickAccountDialog() {
           );
         })}
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button variant="primary" onClick={() => setActive(id)}>
             Utiliser ce compte
           </Button>
@@ -744,10 +802,10 @@ function PickAccountDialog() {
 }
 
 function RecurrenceDialog({ id }: { id?: string }) {
+  const close = useDialogClose();
   const txs = useFreev((s) => s.txs);
   const update = useFreev((s) => s.updateTx);
   const add = useFreev((s) => s.addTx);
-  const open = useFreev((s) => s.open);
   const existing = txs.find((t) => t.id === id);
   const [label, setLabel] = useState(existing?.label ?? "");
   const [amount, setAmount] = useState(existing ? String(Math.abs(existing.amount)) : "");
@@ -775,7 +833,7 @@ function RecurrenceDialog({ id }: { id?: string }) {
           <Toggle on={income} onChange={setIncome} label="Revenu" />
         </div>
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -783,7 +841,9 @@ function RecurrenceDialog({ id }: { id?: string }) {
               if (!label.trim() || !n) return;
               const signed = income ? n : -n;
               const d = Math.min(28, Math.max(1, Number(day) || 1));
-              const date = `2026-11-${String(d).padStart(2, "0")}`;
+              // Stamp the recurring line in the month being looked at, so it does
+              // not silently land in November whatever the header says.
+              const date = `${useFreev.getState().month}-${String(d).padStart(2, "0")}`;
               if (existing) {
                 update(existing.id, {
                   label: label.trim(),
@@ -794,7 +854,7 @@ function RecurrenceDialog({ id }: { id?: string }) {
                   recurring: true,
                   kind: income ? "income" : "expense",
                 });
-                open(null);
+                close();
               } else {
                 add({
                   label: label.trim(),
@@ -819,8 +879,8 @@ function RecurrenceDialog({ id }: { id?: string }) {
 }
 
 function TrialDialog() {
+  const close = useDialogClose();
   const add = useFreev((s) => s.addSub);
-  const open = useFreev((s) => s.open);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [trialEnd, setTrialEnd] = useState("2026-12-19");
@@ -840,7 +900,7 @@ function TrialDialog() {
           onChange={(e) => setTrialEnd(e.target.value)}
         />
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -864,8 +924,8 @@ function TrialDialog() {
 }
 
 function InvoiceDialog() {
+  const close = useDialogClose();
   const add = useFreev((s) => s.addInvoice);
-  const open = useFreev((s) => s.open);
   const [client, setClient] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(TODAY);
@@ -876,7 +936,7 @@ function InvoiceDialog() {
         <Field label="Montant" value={amount} onChange={(e) => setAmount(e.target.value)} />
         <Field label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         <DialogActions>
-          <Button onClick={() => open(null)}>Annuler</Button>
+          <Button onClick={close}>Annuler</Button>
           <Button
             variant="primary"
             onClick={() => {
@@ -894,8 +954,8 @@ function InvoiceDialog() {
 }
 
 function WipeDialog() {
+  const close = useDialogClose();
   const wipe = useFreev((s) => s.wipe);
-  const open = useFreev((s) => s.open);
   return (
     <Modal
       title="Supprimer mes données"
@@ -903,7 +963,7 @@ function WipeDialog() {
       lede="Le journal, les objectifs, les dettes et les factures de cet appareil seront vidés. Les comptes restent."
     >
       <DialogActions>
-        <Button onClick={() => open(null)}>Annuler</Button>
+        <Button onClick={close}>Annuler</Button>
         <Button
           variant="primary"
           onClick={() => {
